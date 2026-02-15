@@ -1,0 +1,16 @@
+credential.helper=osxkeychain
+init.defaultbranch=main
+filter.lfs.clean=git-lfs clean -- %f
+filter.lfs.smudge=git-lfs smudge -- %f
+filter.lfs.process=git-lfs filter-process
+filter.lfs.required=true
+user.name=YathichaC
+user.email=yathicha.c@kkumail.com
+core.repositoryformatversion=0
+core.filemode=true
+core.bare=false
+core.logallrefupdates=true
+core.ignorecase=true
+core.precomposeunicode=true
+remote.origin.url=https://github.com/YathichaC/XOXO-dating-app.git
+remote.origin.fetch=+refs/heads/*:refs/remotes/origin/*
