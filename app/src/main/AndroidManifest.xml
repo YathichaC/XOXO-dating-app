@@ -12,6 +12,36 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.XOXO_compose">
         <activity
+            android:name=".logo"
+            android:exported="false"
+            android:label="@string/title_activity_logo"
+            android:theme="@style/Theme.XOXO_compose" />
+        <activity
+            android:name=".KYC"
+            android:exported="false"
+            android:label="@string/title_activity_kyc"
+            android:theme="@style/Theme.XOXO_compose" />
+        <activity
+            android:name=".term_of_service"
+            android:exported="false"
+            android:label="@string/title_activity_term_of_service"
+            android:theme="@style/Theme.XOXO_compose" />
+        <activity
+            android:name=".Policy"
+            android:exported="false"
+            android:label="@string/title_activity_policy"
+            android:theme="@style/Theme.XOXO_compose" />
+        <activity
+            android:name=".Reset_password"
+            android:exported="false"
+            android:label="@string/title_activity_reset_password"
+            android:theme="@style/Theme.XOXO_compose" />
+        <activity
+            android:name=".Verification"
+            android:exported="false"
+            android:label="@string/title_activity_verification"
+            android:theme="@style/Theme.XOXO_compose" />
+        <activity
             android:name=".forgot_password"
             android:exported="false"
             android:label="@string/title_activity_forgot_password"

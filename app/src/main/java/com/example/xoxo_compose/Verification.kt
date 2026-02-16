@@ -19,32 +19,33 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.example.xoxo_compose.ui.theme.ActionText
 import com.example.xoxo_compose.ui.theme.ClickableActionText
 import com.example.xoxo_compose.ui.theme.InputText
+import com.example.xoxo_compose.ui.theme.NormalText
 import com.example.xoxo_compose.ui.theme.Title
 import com.example.xoxo_compose.ui.theme.XOXO_composeTheme
 import com.example.xoxo_compose.ui.theme.button
 
-class Login : ComponentActivity() {
+class Verification : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             XOXO_composeTheme {
-                LoginScreen()
+                // In a real app, you'd get this from intent or navigation args
+                VerificationScreen(email = "user@example.com")
             }
         }
     }
 }
 
 @Composable
-fun LoginScreen() {
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    val isFormValid = email.isNotEmpty() && password.isNotEmpty()
+fun VerificationScreen(email: String = "") {
+    var otp by remember { mutableStateOf("") }
+    val isFormValid = otp.isNotEmpty()
 
     Surface(modifier = Modifier.fillMaxSize(), color = Color.Black) {
         Box(
@@ -57,32 +58,37 @@ fun LoginScreen() {
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Title("Login")
+                Title(
+                    title = "Verify Code",
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center,
+                    bottomPadding = 5.dp
+                )
 
-                InputText(
-                    label = "Email",
-                    value = email,
-                    onValueChange = { email = it }
+                NormalText(
+                    text = "Enter the code send to your $email",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 20.dp),
+                    textAlign = TextAlign.Center
                 )
 
                 InputText(
-                    label = "Password",
-                    value = password,
-                    onValueChange = { password = it }
+                    label = "OTP",
+                    value = otp,
+                    onValueChange = { otp = it }
                 )
 
                 button(
-                    label = "Login",
+                    label = "Verify",
                     enabled = isFormValid,
                     onClick = { /* TODO */ }
                 )
-
-                ActionText(text = "Forgot Password?")
-
+                
                 ClickableActionText(
-                    text1 = "Don't have an account? ",
-                    text2 = "Register",
-                    onClick = { /* TODO */ }
+                    text1 = "Go back to ",
+                    text2 = "Login",
+                    onClick = { /* TODO: Navigate to Login */ }
                 )
             }
         }
@@ -91,8 +97,8 @@ fun LoginScreen() {
 
 @Preview(showBackground = true)
 @Composable
-fun LoginPreview() {
+fun VerificationPreview() {
     XOXO_composeTheme {
-        LoginScreen()
+        VerificationScreen(email = "example@mail.com")
     }
 }

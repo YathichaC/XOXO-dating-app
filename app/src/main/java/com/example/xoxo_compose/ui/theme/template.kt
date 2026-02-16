@@ -1,4 +1,4 @@
-package com.example.xoxo_compose
+package com.example.xoxo_compose.ui.theme
 
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Column
@@ -26,6 +26,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -92,7 +93,7 @@ fun ColumnScope.ActionText(text: String, color: Color = Color.White, fontWeight:
         color = color,
         fontSize = 14.sp,
         fontWeight = fontWeight,
-        modifier = Modifier.align(androidx.compose.ui.Alignment.CenterHorizontally)
+        modifier = Modifier.align(Alignment.CenterHorizontally)
     )
 }
 
@@ -124,14 +125,20 @@ fun ColumnScope.ClickableActionText(
                     onClick()
                 }
         },
-        modifier = Modifier.align(androidx.compose.ui.Alignment.CenterHorizontally)
+        modifier = Modifier.align(Alignment.CenterHorizontally)
     )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun InputText(label: String, modifier: Modifier = Modifier) {
-    var textValue by remember { mutableStateOf("") }
+fun InputText(
+    label: String,
+    modifier: Modifier = Modifier,
+    value: String? = null,
+    onValueChange: ((String) -> Unit)? = null
+) {
+    var internalTextValue by remember { mutableStateOf("") }
+    val displayValue = value ?: internalTextValue
     val interactionSource = remember { MutableInteractionSource() }
 
     Column(modifier = modifier) {
@@ -149,8 +156,14 @@ fun InputText(label: String, modifier: Modifier = Modifier) {
         )
 
         BasicTextField(
-            value = textValue,
-            onValueChange = { textValue = it },
+            value = displayValue,
+            onValueChange = { 
+                if (onValueChange != null) {
+                    onValueChange(it)
+                } else {
+                    internalTextValue = it
+                }
+            },
             singleLine = true,
             modifier = Modifier
                 .fillMaxWidth()
@@ -163,7 +176,7 @@ fun InputText(label: String, modifier: Modifier = Modifier) {
             cursorBrush = SolidColor(Color.White),
             decorationBox = { innerTextField ->
                 TextFieldDefaults.DecorationBox(
-                    value = textValue,
+                    value = displayValue,
                     innerTextField = innerTextField,
                     enabled = true,
                     singleLine = true,
@@ -188,9 +201,16 @@ fun InputText(label: String, modifier: Modifier = Modifier) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Dropdown(hint: String, items: List<String>, modifier: Modifier = Modifier) {
+fun Dropdown(
+    hint: String,
+    items: List<String>,
+    modifier: Modifier = Modifier,
+    value: String? = null,
+    onValueChange: ((String) -> Unit)? = null
+) {
     var expanded by remember { mutableStateOf(false) }
-    var selectedText by remember { mutableStateOf("") }
+    var internalSelectedText by remember { mutableStateOf("") }
+    val displayValue = value ?: internalSelectedText
     val interactionSource = remember { MutableInteractionSource() }
 
     ExposedDropdownMenuBox(
@@ -209,7 +229,7 @@ fun Dropdown(hint: String, items: List<String>, modifier: Modifier = Modifier) {
         )
 
         BasicTextField(
-            value = selectedText,
+            value = displayValue,
             onValueChange = {},
             readOnly = true,
             modifier = Modifier
@@ -223,7 +243,7 @@ fun Dropdown(hint: String, items: List<String>, modifier: Modifier = Modifier) {
             interactionSource = interactionSource,
             decorationBox = { innerTextField ->
                 TextFieldDefaults.DecorationBox(
-                    value = selectedText,
+                    value = displayValue,
                     innerTextField = innerTextField,
                     enabled = true,
                     singleLine = true,
@@ -267,7 +287,11 @@ fun Dropdown(hint: String, items: List<String>, modifier: Modifier = Modifier) {
                 DropdownMenuItem(
                     text = { Text(text = item) },
                     onClick = {
-                        selectedText = item
+                        if (onValueChange != null) {
+                            onValueChange(item)
+                        } else {
+                            internalSelectedText = item
+                        }
                         expanded = false
                     }
                 )
@@ -283,17 +307,22 @@ fun button(
     modifier: Modifier = Modifier
         .padding(top = 25.dp, bottom = 15.dp),
     containerColor: Color = Color(0xFFD60C0C),
-    contentColor: Color = Color.White
+    contentColor: Color = Color.White,
+    enabled: Boolean = true,
+    onClick: () -> Unit = {}
 ) {
     Button(
-        onClick = { /* TODO */ },
+        onClick = onClick,
         modifier = modifier
             .fillMaxWidth()
             .height(50.dp),
         shape = RoundedCornerShape(10.dp),
+        enabled = enabled,
         colors = ButtonDefaults.buttonColors(
             containerColor = containerColor,
-            contentColor = contentColor
+            contentColor = contentColor,
+            disabledContainerColor = Color(0xFF1F1F1F),
+            disabledContentColor = Color.White.copy(alpha = 0.5f)
         )
     ) {
         Text(
