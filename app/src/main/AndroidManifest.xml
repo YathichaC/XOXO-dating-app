@@ -12,6 +12,11 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.XOXO_compose">
         <activity
+            android:name=".forgot_password"
+            android:exported="false"
+            android:label="@string/title_activity_forgot_password"
+            android:theme="@style/Theme.XOXO_compose" />
+        <activity
             android:name=".Register"
             android:exported="false"
             android:label="@string/title_activity_register"
