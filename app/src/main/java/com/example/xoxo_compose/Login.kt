@@ -1,9 +1,11 @@
 package com.example.xoxo_compose
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,6 +21,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.xoxo_compose.ui.theme.ActionText
@@ -42,6 +45,7 @@ class Login : ComponentActivity() {
 
 @Composable
 fun LoginScreen() {
+    val context = LocalContext.current
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     val isFormValid = email.isNotEmpty() && password.isNotEmpty()
@@ -77,12 +81,19 @@ fun LoginScreen() {
                     onClick = { /* TODO */ }
                 )
 
-                ActionText(text = "Forgot Password?")
+                ActionText(
+                    text = "Forgot Password?",
+                    modifier = Modifier.clickable {
+                        context.startActivity(Intent(context, forgot_password::class.java))
+                    }
+                )
 
                 ClickableActionText(
                     text1 = "Don't have an account? ",
                     text2 = "Register",
-                    onClick = { /* TODO */ }
+                    onClick = {
+                        context.startActivity(Intent(context, Register::class.java))
+                    }
                 )
             }
         }

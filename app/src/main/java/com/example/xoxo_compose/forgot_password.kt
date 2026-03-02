@@ -1,5 +1,6 @@
 package com.example.xoxo_compose
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -19,6 +20,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -43,6 +45,7 @@ class forgot_password : ComponentActivity() {
 
 @Composable
 fun ForgotScreen() {
+    val context = LocalContext.current
     var email by remember { mutableStateOf("") }
     val isFormValid = email.isNotEmpty()
     
@@ -81,13 +84,19 @@ fun ForgotScreen() {
                 button(
                     label = "Send",
                     enabled = isFormValid,
-                    onClick = { /* TODO: Navigate to Verification with email */ }
+                    onClick = {
+                        val intent = Intent(context, Verification::class.java)
+                        intent.putExtra("email", email)
+                        context.startActivity(intent)
+                    }
                 )
                 
                 ClickableActionText(
                     text1 = "Go back to ",
                     text2 = "Login",
-                    onClick = { /* TODO: Navigate to Login */ }
+                    onClick = {
+                        context.startActivity(Intent(context, Login::class.java))
+                    }
                 )
             }
         }

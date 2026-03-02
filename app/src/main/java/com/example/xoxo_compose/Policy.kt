@@ -1,5 +1,6 @@
 package com.example.xoxo_compose
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -22,6 +23,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -45,6 +47,7 @@ class Policy : ComponentActivity() {
 
 @Composable
 fun PolicyScreen() {
+    val context = LocalContext.current
     val scrollState = rememberScrollState()
     val isAtEnd by remember {
         derivedStateOf {
@@ -92,7 +95,7 @@ fun PolicyScreen() {
                 containerColor = if (isAtEnd) Color(0xFFD60C0C) else Color(0xFF1F1F1F),
                 onClick = {
                     if (isAtEnd) {
-                        // Handle navigation or agreement action here
+                        context.startActivity(Intent(context, term_of_service::class.java))
                     }
                 }
             )

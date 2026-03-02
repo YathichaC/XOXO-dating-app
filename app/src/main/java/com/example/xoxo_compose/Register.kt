@@ -1,5 +1,6 @@
 package com.example.xoxo_compose
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -20,6 +21,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -45,6 +47,7 @@ class Register : ComponentActivity() {
 
 @Composable
 fun register() {
+    val context = LocalContext.current
     val countries = stringArrayResource(R.array.country_list).toList()
     
     var username by remember { mutableStateOf("") }
@@ -152,13 +155,17 @@ fun register() {
                 button(
                     label = "Register",
                     enabled = isFormValid,
-                    onClick = { /* Action */ }
+                    onClick = {
+                        context.startActivity(Intent(context, Policy::class.java))
+                    }
                 )
                 
                 ClickableActionText(
                     text1 = "Already have an account? ",
                     text2 = "Login",
-                    onClick = { /* TODO: Navigate to Login */ }
+                    onClick = {
+                        context.startActivity(Intent(context, Login::class.java))
+                    }
                 )
             }
         }

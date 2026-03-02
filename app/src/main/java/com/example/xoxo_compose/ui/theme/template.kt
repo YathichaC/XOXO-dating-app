@@ -87,13 +87,18 @@ fun NormalText(
 }
 
 @Composable
-fun ColumnScope.ActionText(text: String, color: Color = Color.White, fontWeight: FontWeight? = null) {
+fun ColumnScope.ActionText(
+    text: String, 
+    modifier: Modifier = Modifier, 
+    color: Color = Color.White, 
+    fontWeight: FontWeight? = null
+) {
     Text(
         text = text,
         color = color,
         fontSize = 14.sp,
         fontWeight = fontWeight,
-        modifier = Modifier.align(Alignment.CenterHorizontally)
+        modifier = modifier.align(Alignment.CenterHorizontally)
     )
 }
 

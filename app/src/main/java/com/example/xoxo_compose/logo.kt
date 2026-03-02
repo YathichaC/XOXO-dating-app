@@ -5,34 +5,39 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.foundation.layout.size
+import androidx.compose.runtime.*
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
-import com.airbnb.lottie.compose.LottieAnimation
-import com.airbnb.lottie.compose.LottieCompositionSpec
-import com.airbnb.lottie.compose.animateLottieCompositionAsState
-import com.airbnb.lottie.compose.rememberLottieComposition
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import com.airbnb.lottie.compose.*
 import com.example.xoxo_compose.ui.theme.XOXO_composeTheme
+import kotlinx.coroutines.delay
 
-class logo : ComponentActivity() {
+class Logo : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
         setContent {
             XOXO_composeTheme {
-                SplashScreen(onAnimationEnd = {
-                    startActivity(Intent(this, Login::class.java))
-                    finish()
-                })
+                SplashScreen(
+                    onAnimationEnd = {
+                        startActivity(Intent(this, Login::class.java))
+                        overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+                        finish()
+                    }
+                )
             }
         }
     }
@@ -40,14 +45,31 @@ class logo : ComponentActivity() {
 
 @Composable
 fun SplashScreen(onAnimationEnd: () -> Unit) {
-    var backgroundColor by remember { mutableStateOf(Color.Black) }
-    // Use R.raw.logo instead of R.drawable.logo because JSON files belong in res/raw
-    val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.logo))
-    val progress by animateLottieCompositionAsState(composition)
+    var isAnimationFinished by remember { mutableStateOf(false) }
+    var startFadeOutScreen by remember { mutableStateOf(false) }
+
+    val screenAlpha by animateFloatAsState(
+        targetValue = if (startFadeOutScreen) 0f else 1f,
+        animationSpec = tween(durationMillis = 800),
+        label = "ScreenFadeOut"
+    )
+
+    val composition by rememberLottieComposition(
+        LottieCompositionSpec.RawRes(R.raw.xoxologo)
+    )
+
+    val progress by animateLottieCompositionAsState(
+        composition = composition,
+        iterations = 1,
+        isPlaying = true
+    )
 
     LaunchedEffect(progress) {
-        if (progress == 1f) {
-            backgroundColor = Color.Red
+        if (progress >= 1f && composition != null) {
+            isAnimationFinished = true
+            delay(500)
+            startFadeOutScreen = true
+            delay(800)
             onAnimationEnd()
         }
     }
@@ -55,12 +77,26 @@ fun SplashScreen(onAnimationEnd: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(backgroundColor),
+            .alpha(screenAlpha)
+            .background(Color.Black),
         contentAlignment = Alignment.Center
     ) {
-        LottieAnimation(
-            composition = composition,
-            progress = { progress }
-        )
+        if (composition != null) {
+            LottieAnimation(
+                composition = composition,
+                progress = { progress },
+                modifier = Modifier
+                    .size(400.dp)
+                    .alpha(if (isAnimationFinished) 0f else 1f)
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun LogoPreview() {
+    XOXO_composeTheme {
+        SplashScreen(onAnimationEnd = {})
     }
 }
