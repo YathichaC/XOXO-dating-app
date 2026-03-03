@@ -216,4 +216,9 @@
     <string name="title_activity_filter">Filter</string>
     <string name="title_activity_image">Image</string>
     <string name="title_activity_report">Report</string>
+    <string name="title_activity_profile">Profile</string>
+    <string name="title_activity_edit_profile">EditProfile</string>
+    <string name="title_activity_edit_button">Edit_button</string>
+    <string name="title_activity_changeimg">Changeimg</string>
+    <string name="title_activity_addimg">Addimg</string>
 </resources>

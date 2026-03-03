@@ -82,7 +82,9 @@ fun MainScreen() {
                     contentDescription = "User Profile",
                     modifier = Modifier
                         .size(40.dp)
-                        .clickable { /* TODO: Profile Action */ }
+                        .clickable {
+                            context.startActivity(Intent(context, Profile::class.java))
+                        }
                 )
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(16.dp),

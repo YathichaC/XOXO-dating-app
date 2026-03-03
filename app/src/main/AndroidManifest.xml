@@ -12,6 +12,31 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.XOXO_compose">
         <activity
+            android:name=".ui.theme.Addimg"
+            android:exported="false"
+            android:label="@string/title_activity_addimg"
+            android:theme="@style/Theme.XOXO_compose" />
+        <activity
+            android:name=".Changeimg"
+            android:exported="false"
+            android:label="@string/title_activity_changeimg"
+            android:theme="@style/Theme.XOXO_compose" />
+        <activity
+            android:name=".ui.theme.Edit_button"
+            android:exported="false"
+            android:label="@string/title_activity_edit_button"
+            android:theme="@style/Theme.XOXO_compose" />
+        <activity
+            android:name=".EditProfile"
+            android:exported="false"
+            android:label="@string/title_activity_edit_profile"
+            android:theme="@style/Theme.XOXO_compose" />
+        <activity
+            android:name=".Profile"
+            android:exported="false"
+            android:label="@string/title_activity_profile"
+            android:theme="@style/Theme.XOXO_compose" />
+        <activity
             android:name=".Report"
             android:exported="false"
             android:label="@string/title_activity_report"
