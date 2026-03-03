@@ -12,6 +12,16 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.XOXO_compose">
         <activity
+            android:name=".Filter"
+            android:exported="false"
+            android:label="@string/title_activity_filter"
+            android:theme="@style/Theme.XOXO_compose" />
+        <activity
+            android:name=".ui.theme.ui.theme.circlenumber"
+            android:exported="false"
+            android:label="@string/title_activity_circlenumber"
+            android:theme="@style/Theme.XOXO_compose" />
+        <activity
             android:name=".ui.theme.button_main"
             android:exported="false"
             android:label="@string/title_activity_button_main"

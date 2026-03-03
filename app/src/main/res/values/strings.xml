@@ -212,4 +212,6 @@
     <string name="title_activity_loading">Loading</string>
     <string name="title_activity_main">Main</string>
     <string name="title_activity_button_main">button_main</string>
+    <string name="title_activity_circlenumber">circlenumber</string>
+    <string name="title_activity_filter">Filter</string>
 </resources>

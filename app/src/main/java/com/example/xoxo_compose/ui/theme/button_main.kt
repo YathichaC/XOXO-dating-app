@@ -1,47 +1,46 @@
 package com.example.xoxo_compose.ui.theme
 
-import android.os.Bundle
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
-import com.example.xoxo_compose.ui.theme.ui.theme.XOXO_composeTheme
+import androidx.compose.ui.unit.dp
+import com.example.xoxo_compose.R
 
-class button_main : ComponentActivity() {
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
-        setContent {
-            XOXO_composeTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
-                }
-            }
-        }
+@Composable
+fun MainActionButtons(
+    onWrongClick: () -> Unit = {},
+    onLikeClick: () -> Unit = {}
+) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(20.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Image(
+            painter = painterResource(id = R.drawable.wrong),
+            contentDescription = "Wrong",
+            modifier = Modifier
+                .size(64.dp)
+                .clickable { onWrongClick() }
+        )
+        Image(
+            painter = painterResource(id = R.drawable.like),
+            contentDescription = "Like",
+            modifier = Modifier
+                .size(64.dp)
+                .clickable { onLikeClick() }
+        )
     }
 }
 
+@Preview(showBackground = false)
 @Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    XOXO_composeTheme {
-        Greeting("Android")
-    }
+fun MainActionButtonsPreview() {
+    MainActionButtons()
 }
