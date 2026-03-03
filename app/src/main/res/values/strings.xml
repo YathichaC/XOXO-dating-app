@@ -214,4 +214,6 @@
     <string name="title_activity_button_main">button_main</string>
     <string name="title_activity_circlenumber">circlenumber</string>
     <string name="title_activity_filter">Filter</string>
+    <string name="title_activity_image">Image</string>
+    <string name="title_activity_report">Report</string>
 </resources>

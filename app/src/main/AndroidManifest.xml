@@ -12,6 +12,16 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.XOXO_compose">
         <activity
+            android:name=".Report"
+            android:exported="false"
+            android:label="@string/title_activity_report"
+            android:theme="@style/Theme.XOXO_compose" />
+        <activity
+            android:name=".Image"
+            android:exported="false"
+            android:label="@string/title_activity_image"
+            android:theme="@style/Theme.XOXO_compose" />
+        <activity
             android:name=".Filter"
             android:exported="false"
             android:label="@string/title_activity_filter"

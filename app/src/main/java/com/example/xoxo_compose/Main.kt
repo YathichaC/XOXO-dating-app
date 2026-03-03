@@ -163,7 +163,11 @@ fun MainScreen() {
                 Image(
                     painter = painterResource(id = R.drawable.user), 
                     contentDescription = "Person Photo",
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clickable {
+                            context.startActivity(Intent(context, ImageActivity::class.java))
+                        },
                     contentScale = ContentScale.Crop,
                     alpha = 0.6f
                 )
@@ -177,13 +181,17 @@ fun MainScreen() {
                         onWrongClick = {
                             scope.launch {
                                 offsetX.animateTo(-1000f, tween(300))
+                                Toast.makeText(context, "Disliked", Toast.LENGTH_SHORT).show()
                                 offsetX.snapTo(0f)
+                                offsetY.snapTo(0f)
                             }
                         },
                         onLikeClick = {
                             scope.launch {
                                 offsetX.animateTo(1000f, tween(300))
+                                Toast.makeText(context, "Liked!", Toast.LENGTH_SHORT).show()
                                 offsetX.snapTo(0f)
+                                offsetY.snapTo(0f)
                             }
                         }
                     )
@@ -208,7 +216,9 @@ fun MainScreen() {
                     Box(
                         modifier = Modifier
                             .background(Color.Red, RoundedCornerShape(10.dp))
-                            .clickable { /* TODO: Report Action */ }
+                            .clickable {
+                                context.startActivity(Intent(context, Report::class.java))
+                            }
                             .padding(horizontal = 10.dp, vertical = 2.dp)
                     ) {
                         Text(

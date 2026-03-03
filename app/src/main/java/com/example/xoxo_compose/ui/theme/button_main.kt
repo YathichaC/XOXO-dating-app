@@ -19,7 +19,7 @@ fun MainActionButtons(
     onLikeClick: () -> Unit = {}
 ) {
     Row(
-        horizontalArrangement = Arrangement.spacedBy(20.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Image(

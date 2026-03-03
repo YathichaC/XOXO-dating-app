@@ -140,7 +140,9 @@ fun InputText(
     label: String,
     modifier: Modifier = Modifier,
     value: String? = null,
-    onValueChange: ((String) -> Unit)? = null
+    onValueChange: ((String) -> Unit)? = null,
+    height: Dp = 40.dp,
+    singleLine: Boolean = true
 ) {
     var internalTextValue by remember { mutableStateOf("") }
     val displayValue = value ?: internalTextValue
@@ -169,10 +171,10 @@ fun InputText(
                     internalTextValue = it
                 }
             },
-            singleLine = true,
+            singleLine = singleLine,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(40.dp),
+                .height(height),
             textStyle = TextStyle(
                 color = Color.White,
                 fontSize = 16.sp
@@ -184,10 +186,10 @@ fun InputText(
                     value = displayValue,
                     innerTextField = innerTextField,
                     enabled = true,
-                    singleLine = true,
+                    singleLine = singleLine,
                     visualTransformation = VisualTransformation.None,
                     interactionSource = interactionSource,
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = if (singleLine) 0.dp else 12.dp),
                     colors = colors,
                     container = {
                         TextFieldDefaults.Container(
