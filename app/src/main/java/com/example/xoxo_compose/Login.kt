@@ -17,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -24,17 +25,21 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.example.xoxo_compose.network.ApiClient
 import com.example.xoxo_compose.ui.theme.ActionText
 import com.example.xoxo_compose.ui.theme.ClickableActionText
 import com.example.xoxo_compose.ui.theme.InputText
 import com.example.xoxo_compose.ui.theme.Title
 import com.example.xoxo_compose.ui.theme.XOXO_composeTheme
 import com.example.xoxo_compose.ui.theme.button
+import kotlinx.coroutines.launch
 
 class Login : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        // Initialize SharedPreferences
+        ApiClient.initSharedPreferences(this)
         setContent {
             XOXO_composeTheme {
                 LoginScreen()
@@ -46,8 +51,10 @@ class Login : ComponentActivity() {
 @Composable
 fun LoginScreen() {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(false) }
     val isFormValid = email.isNotEmpty() && password.isNotEmpty()
 
     Surface(modifier = Modifier.fillMaxSize(), color = Color.Black) {
@@ -77,8 +84,27 @@ fun LoginScreen() {
 
                 button(
                     label = "Login",
-                    enabled = isFormValid,
-                    onClick = { /* TODO */ }
+                    enabled = isFormValid && !isLoading,
+                    onClick = {
+                        scope.launch {
+                            isLoading = true
+                            ApiClient.loginUser(
+                                email = email,
+                                password = password
+                            ).onSuccess { response ->
+                                isLoading = false
+                                if (response.status) {
+                                    android.util.Log.d("Login", "Login successful: ${response.msg}")
+                                    // TODO: Navigate to home screen or dashboard
+                                } else {
+                                    android.util.Log.e("Login", "Login failed: ${response.msg}")
+                                }
+                            }.onFailure { error ->
+                                isLoading = false
+                                android.util.Log.e("Login", "Login failed: ${error.message}")
+                            }
+                        }
+                    }
                 )
 
                 ActionText(

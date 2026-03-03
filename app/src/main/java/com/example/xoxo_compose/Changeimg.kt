@@ -100,7 +100,6 @@ fun ChangeImageScreen() {
                     )
                 }
             }
-
             // เพิ่มปุ่ม Cancel และ Save ด้านล่าง
             Row(
                 modifier = Modifier

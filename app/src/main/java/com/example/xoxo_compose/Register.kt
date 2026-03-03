@@ -17,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -25,6 +26,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.example.xoxo_compose.network.ApiClient
 import com.example.xoxo_compose.ui.theme.ClickableActionText
 import com.example.xoxo_compose.ui.theme.Dropdown
 import com.example.xoxo_compose.ui.theme.InputText
@@ -32,11 +34,14 @@ import com.example.xoxo_compose.ui.theme.SubTitleText
 import com.example.xoxo_compose.ui.theme.Title
 import com.example.xoxo_compose.ui.theme.XOXO_composeTheme
 import com.example.xoxo_compose.ui.theme.button
+import kotlinx.coroutines.launch
 
 class Register : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        // Initialize SharedPreferences
+        ApiClient.initSharedPreferences(this)
         setContent {
             XOXO_composeTheme {
                 register()
@@ -48,6 +53,7 @@ class Register : ComponentActivity() {
 @Composable
 fun register() {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val countries = stringArrayResource(R.array.country_list).toList()
     
     var username by remember { mutableStateOf("") }
@@ -57,6 +63,7 @@ fun register() {
     var month by remember { mutableStateOf("") }
     var year by remember { mutableStateOf("") }
     var country by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(false) }
 
     val isFormValid = username.isNotEmpty() && email.isNotEmpty() && password.isNotEmpty() &&
             day.isNotEmpty() && month.isNotEmpty() && year.isNotEmpty() && country.isNotEmpty()
@@ -75,7 +82,7 @@ fun register() {
                 Title("Register")
 
                 InputText(
-                    label = "Username",
+                    label = "Full Name",
                     value = username,
                     onValueChange = { username = it }
                 )
@@ -154,9 +161,32 @@ fun register() {
 
                 button(
                     label = "Register",
-                    enabled = isFormValid,
+                    enabled = isFormValid && !isLoading,
                     onClick = {
-                        context.startActivity(Intent(context, Policy::class.java))
+                        scope.launch {
+                            isLoading = true
+                            val monthNumber = (listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", 
+                                "Jul", "Aug", "Sep", "Oct", "Nov", "Dec").indexOf(month) + 1)
+                                .toString().padStart(2, '0')
+                            
+                            ApiClient.registerUser(
+                                fullname = username,
+                                email = email,
+                                password = password,
+                                day = day,
+                                month = monthNumber,
+                                year = year,
+                                country = country
+                            ).onSuccess { response ->
+                                isLoading = false
+                                android.util.Log.d("Register", "Registration successful: $response")
+                                // Handle success - navigate to next screen
+                            }.onFailure { error ->
+                                isLoading = false
+                                android.util.Log.e("Register", "Registration failed: ${error.message}")
+                                // Handle error
+                            }
+                        }
                     }
                 )
                 

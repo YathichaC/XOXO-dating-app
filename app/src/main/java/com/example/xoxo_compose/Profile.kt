@@ -180,7 +180,9 @@ fun ProfileScreen() {
                 containerColor = Color.White,
                 contentColor = Color.Black,
                 modifier = Modifier.padding(bottom = 30.dp),
-                onClick = { /* TODO */ }
+                onClick = {
+                    context.startActivity(Intent(context, Login::class.java))
+                }
             )
         }
     }
