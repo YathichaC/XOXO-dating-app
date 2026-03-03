@@ -17,7 +17,7 @@
             android:label="@string/title_activity_report"
             android:theme="@style/Theme.XOXO_compose" />
         <activity
-            android:name=".Image"
+            android:name=".ImageActivity"
             android:exported="false"
             android:label="@string/title_activity_image"
             android:theme="@style/Theme.XOXO_compose" />
