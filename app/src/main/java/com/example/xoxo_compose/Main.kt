@@ -392,16 +392,22 @@ fun MainScreen() {
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
+                            verticalAlignment = Alignment.Top,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text(
-                                text = "${it.fullname}, ${it.country}",
-                                color = Color.White,
-                                fontSize = 28.sp,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.weight(1f)
-                            )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = it.fullname,
+                                    color = Color.White,
+                                    fontSize = 28.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = it.country,
+                                    color = Color.White,
+                                    fontSize = 14.sp
+                                )
+                            }
 
                             Surface(
                                 modifier = Modifier
