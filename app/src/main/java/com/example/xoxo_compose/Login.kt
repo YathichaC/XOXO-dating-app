@@ -88,13 +88,30 @@ fun LoginScreen() {
                     onClick = {
                         scope.launch {
                             isLoading = true
+                            android.util.Log.d("Login", "=== LOGIN CLICK START ===")
+                            android.util.Log.d("Login", "Email: $email")
                             ApiClient.loginUser(
                                 email = email,
                                 password = password
                             ).onSuccess { response ->
                                 isLoading = false
+                                android.util.Log.d("Login", "Login API response status: ${response.status}")
                                 if (response.status) {
-                                    android.util.Log.d("Login", "Login successful: ${response.msg}")
+                                    android.util.Log.d("Login", "✓ Login successful for: ${response.fullname}")
+                                    
+                                    // Dump all saved data
+                                    val savedData = ApiClient.dumpAllPreferences()
+                                    android.util.Log.d("Login", savedData)
+                                    
+                                    android.util.Log.d("Login", "=== LOGIN CLICK END ===")
+                                    
+                                    // Show toast with saved user info
+                                    android.widget.Toast.makeText(
+                                        context,
+                                        "Saved: ${response.fullname} (${response.email})",
+                                        android.widget.Toast.LENGTH_LONG
+                                    ).show()
+                                    
                                     // Navigate to Main screen
                                     context.startActivity(Intent(context, Main::class.java))
                                     (context as? ComponentActivity)?.finish()
