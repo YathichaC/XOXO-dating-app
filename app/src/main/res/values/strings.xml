@@ -221,4 +221,7 @@
     <string name="title_activity_edit_button">Edit_button</string>
     <string name="title_activity_changeimg">Changeimg</string>
     <string name="title_activity_addimg">Addimg</string>
+    <string name="title_activity_gender">Gender</string>
+    <string name="title_activity_uploadpic">Uploadpic</string>
+    <string name="title_activity_bio">Bio</string>
 </resources>
