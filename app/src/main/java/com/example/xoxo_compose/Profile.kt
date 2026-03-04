@@ -179,7 +179,11 @@ fun ProfileScreen() {
                     button(
                         label = "SignOut",
                         onClick = {
+                            android.util.Log.d("Profile", "=== SIGNOUT CLICKED (ERROR STATE) ===")
+                            ApiClient.clearLoginData()
+                            android.util.Log.d("Profile", "✓ Data cleared, navigating to Login")
                             context.startActivity(Intent(context, Login::class.java))
+                            (context as? ComponentActivity)?.finish()
                         }
                     )
                 }
@@ -318,8 +322,11 @@ fun ProfileScreen() {
                     contentColor = Color.Black,
                     modifier = Modifier.padding(bottom = 30.dp),
                     onClick = {
+                        android.util.Log.d("Profile", "=== SIGNOUT CLICKED ===")
                         ApiClient.clearLoginData()
+                        android.util.Log.d("Profile", "✓ Data cleared, navigating to Login")
                         context.startActivity(Intent(context, Login::class.java))
+                        (context as? ComponentActivity)?.finish()
                     }
                 )
             }

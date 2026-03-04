@@ -4,14 +4,33 @@ import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
+import android.util.Base64
+import android.graphics.BitmapFactory
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.CircleShape
+import java.io.File
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -63,6 +82,34 @@ fun EditProfileScreen() {
     var isLoading by remember { mutableStateOf(true) }
     var isSaving by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
+    
+    // Image upload modal state
+    var showImageModal by remember { mutableStateOf(false) }
+    
+    // Profile image base64 state
+    var profileImageBase64 by remember { mutableStateOf("") }
+
+    // Image picker launcher
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        if (uri != null) {
+            try {
+                val inputStream = context.contentResolver.openInputStream(uri)
+                val bytes = inputStream?.readBytes()
+                inputStream?.close()
+                
+                if (bytes != null) {
+                    profileImageBase64 = Base64.encodeToString(bytes, Base64.DEFAULT)
+                    Toast.makeText(context, "Image selected successfully", Toast.LENGTH_SHORT).show()
+                    android.util.Log.d("EditProfile", "Image converted to base64: ${profileImageBase64.take(50)}...")
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, "Error reading image: ${e.message}", Toast.LENGTH_SHORT).show()
+                android.util.Log.e("EditProfile", "Error converting image: ${e.message}")
+            }
+        }
+    }
 
     // Load profile data when screen loads
     LaunchedEffect(Unit) {
@@ -87,6 +134,43 @@ fun EditProfileScreen() {
                     android.util.Log.e("EditProfile", "Failed to load profile: ${error.message}")
                 }
         }
+    }
+
+    // Image upload modal
+    if (showImageModal) {
+        AlertDialog(
+            onDismissRequest = { showImageModal = false },
+            containerColor = Color(0xFF1F1F1F),
+            titleContentColor = Color.White,
+            textContentColor = Color.Gray,
+            title = {
+                Text(text = "Change Image", color = Color.White)
+            },
+            text = {
+                Text(text = "Select what image you want to upload", color = Color.Gray)
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showImageModal = false
+                        // Open file chooser for image selection
+                        imagePickerLauncher.launch("image/*")
+                    }
+                ) {
+                    Text("Profile Image", color = Color(0xFFD60C0C))
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showImageModal = false
+                        context.startActivity(Intent(context, Changeimg::class.java))
+                    }
+                ) {
+                    Text("Lifestyle Image", color = Color.White)
+                }
+            }
+        )
     }
 
     Surface(
@@ -162,36 +246,69 @@ fun EditProfileScreen() {
                     .align(Alignment.CenterHorizontally)
                     .size(100.dp)
             ) {
-                val userImageUrl = if (image.isNotEmpty()) {
-                    "${ApiClient.API_BASE_URL}/images/$image"
+                if (profileImageBase64.isNotEmpty()) {
+                    // Decode base64 outside of composition
+                    val decodedBytes = try {
+                        Base64.decode(profileImageBase64, Base64.DEFAULT)
+                    } catch (e: Exception) {
+                        null
+                    }
+                    
+                    val bitmap = decodedBytes?.let { 
+                        BitmapFactory.decodeByteArray(it, 0, it.size)
+                    }
+                    
+                    if (bitmap != null) {
+                        Image(
+                            bitmap = bitmap.asImageBitmap(),
+                            contentDescription = "Selected Profile Photo",
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(CircleShape),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        androidx.compose.material3.Text(
+                            "Image Error",
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(CircleShape)
+                                .align(Alignment.Center),
+                            color = Color.Red
+                        )
+                    }
                 } else {
-                    null
-                }
+                    val userImageUrl = if (image.isNotEmpty()) {
+                        "${ApiClient.API_BASE_URL}/images/$image"
+                    } else {
+                        null
+                    }
 
-                if (userImageUrl != null) {
-                    AsyncImage(
-                        model = userImageUrl,
-                        contentDescription = "User Photo",
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(CircleShape),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    Image(
-                        painter = painterResource(id = R.drawable.user),
-                        contentDescription = "User Photo",
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(CircleShape)
-                    )
+                    if (userImageUrl != null) {
+                        AsyncImage(
+                            model = userImageUrl,
+                            contentDescription = "User Photo",
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(CircleShape),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Image(
+                            painter = painterResource(id = R.drawable.user),
+                            contentDescription = "User Photo",
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(CircleShape)
+                        )
+                    }
                 }
                 EditButton(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
                         .offset(x = 8.dp, y = 8.dp),
                     onClick = {
-                        context.startActivity(Intent(context, Changeimg::class.java))
+                        showImageModal = true
                     }
                 )
             }
@@ -273,17 +390,39 @@ fun EditProfileScreen() {
                     onClick = {
                         scope.launch {
                             isSaving = true
+                            // Format image with data URL prefix if available
+                            val imageData = if (profileImageBase64.isNotEmpty()) {
+                                "data:image/jpeg;base64,${profileImageBase64}"
+                            } else {
+                                null
+                            }
+                            
+                            android.util.Log.d("EditProfile", "Saving profile with image: ${imageData?.take(100)}...")
+                            
                             ApiClient.updateProfile(
                                 fullname = username,
                                 country = selectedCountry,
                                 gender = selectedGender,
-                                bio = bio
+                                bio = bio,
+                                image = imageData
                             ).onSuccess { response ->
                                 isSaving = false
                                 if (response.status) {
+                                    // Save the updated profile to SharedPreferences
+                                    ApiClient.saveProfileUpdate(response)
+                                    
+                                    // Update UI with new data
+                                    username = response.fullname
+                                    bio = response.bio
+                                    image = response.image
+                                    
+                                    // Clear the selected image base64 after successful upload
+                                    profileImageBase64 = ""
+                                    
                                     Toast.makeText(context, "Profile updated successfully", Toast.LENGTH_SHORT).show()
                                     android.util.Log.d("EditProfile", "Profile updated: ${response.msg}")
-                                    // Navigate back to profile
+                                    
+                                    // Navigate back to profile after a short delay
                                     context.startActivity(Intent(context, Profile::class.java))
                                     (context as? ComponentActivity)?.finish()
                                 } else {

@@ -25,22 +25,25 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import com.example.xoxo_compose.ui.theme.XOXO_composeTheme
 
 class ImageActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        val fullname = intent.getStringExtra("fullname") ?: "User"
+        val lifeImages = intent.getStringArrayListExtra("lifeImages") ?: arrayListOf()
         setContent {
             XOXO_composeTheme {
-                ImageScreen(name = "Samantha")
+                ImageScreen(name = fullname, lifeImages = lifeImages)
             }
         }
     }
 }
 
 @Composable
-fun ImageScreen(name: String) {
+fun ImageScreen(name: String, lifeImages: List<String> = emptyList()) {
     val context = LocalContext.current
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -81,7 +84,7 @@ fun ImageScreen(name: String) {
                 verticalArrangement = Arrangement.spacedBy(16.dp),
                 contentPadding = PaddingValues(top = 10.dp, bottom = 20.dp)
             ) {
-                items(6) {
+                items(lifeImages.size) { index ->
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -89,13 +92,22 @@ fun ImageScreen(name: String) {
                             .clip(RoundedCornerShape(20.dp))
                             .background(Color.DarkGray)
                     ) {
-                        androidx.compose.foundation.Image(
-                            painter = painterResource(id = R.drawable.user),
-                            contentDescription = "Person Photo",
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop,
-                            alpha = 0.8f
-                        )
+                        if (lifeImages.isNotEmpty() && index < lifeImages.size) {
+                            AsyncImage(
+                                model = "${com.example.xoxo_compose.network.ApiClient.API_BASE_URL}/images/${lifeImages[index]}",
+                                contentDescription = "Lifestyle Photo ${index + 1}",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            androidx.compose.foundation.Image(
+                                painter = painterResource(id = R.drawable.user),
+                                contentDescription = "Person Photo",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop,
+                                alpha = 0.8f
+                            )
+                        }
                     }
                 }
             }
