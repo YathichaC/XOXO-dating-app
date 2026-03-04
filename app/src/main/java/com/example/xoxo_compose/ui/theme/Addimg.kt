@@ -42,7 +42,7 @@ fun AddImageScreen(modifier: Modifier = Modifier.fillMaxSize()) {
     ) {
         Box(
             modifier = Modifier
-                .size(125.dp)
+                .size(100.dp)
                 .background(Color.Black, shape = RoundedCornerShape(10.dp))
                 .border(
                     BorderStroke(2.dp, Color.White),
@@ -53,7 +53,7 @@ fun AddImageScreen(modifier: Modifier = Modifier.fillMaxSize()) {
             Image(
                 painter = painterResource(id = R.drawable.add),
                 contentDescription = "Add Image",
-                modifier = Modifier.size(40.dp)
+                modifier = Modifier.size(20.dp)
             )
         }
     }
