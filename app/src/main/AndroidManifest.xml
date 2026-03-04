@@ -9,7 +9,7 @@
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
-        android:label="@string/app_name"
+        android:label="XOXO"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.XOXO_compose">
@@ -60,6 +60,11 @@
             android:theme="@style/Theme.XOXO_compose" />
         <activity
             android:name=".Main"
+            android:exported="false"
+            android:label="@string/title_activity_main"
+            android:theme="@style/Theme.XOXO_compose" />
+        <activity
+            android:name=".Logo"
             android:exported="true"
             android:label="@string/app_name"
             android:theme="@style/Theme.XOXO_compose">
@@ -69,11 +74,6 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity
-            android:name=".Logo"
-            android:exported="false"
-            android:label="@string/title_activity_logo"
-            android:theme="@style/Theme.XOXO_compose" />
         <activity
             android:name=".Login"
             android:exported="false"

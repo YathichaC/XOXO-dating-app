@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.airbnb.lottie.compose.*
+import com.example.xoxo_compose.network.ApiClient
 import com.example.xoxo_compose.ui.theme.XOXO_composeTheme
 import kotlinx.coroutines.delay
 
@@ -29,11 +30,28 @@ class Logo : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        // 1. Initialise SharedPreferences immediately
+        ApiClient.initSharedPreferences(this)
+        
+        // 2. Pre-check login status before animation finishes
+        val userData = ApiClient.getUserData()
+        android.util.Log.d("Logo", "Initial check - userData: ${userData?.fullname ?: "NULL"}")
+
         setContent {
             XOXO_composeTheme {
                 SplashScreen(
                     onAnimationEnd = {
-                        startActivity(Intent(this, Login::class.java))
+                        // 3. Final check and navigate
+                        val finalUserData = ApiClient.getUserData()
+                        android.util.Log.d("Logo", "Animation end - userData: ${finalUserData?.fullname ?: "NULL"}")
+                        
+                        val targetActivity = if (finalUserData != null) {
+                            Main::class.java
+                        } else {
+                            Login::class.java
+                        }
+                        
+                        startActivity(Intent(this, targetActivity))
                         overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
                         finish()
                     }
