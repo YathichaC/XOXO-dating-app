@@ -63,6 +63,9 @@ dependencies {
     
     // Kotlin Serialization
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.1")
+    
+    // Coil for image loading
+    implementation("io.coil-kt:coil-compose:2.4.0")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

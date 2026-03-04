@@ -33,6 +33,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import com.example.xoxo_compose.network.ApiClient
 import com.example.xoxo_compose.ui.theme.MainActionButtons
 import com.example.xoxo_compose.ui.theme.XOXO_composeTheme
 import com.example.xoxo_compose.ui.theme.ui.theme.CircleNumberBadge
@@ -42,6 +44,8 @@ class Main : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        // Initialize SharedPreferences
+        ApiClient.initSharedPreferences(this)
         setContent {
             XOXO_composeTheme {
                 MainScreen()
@@ -54,6 +58,14 @@ class Main : ComponentActivity() {
 fun MainScreen() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    
+    // Get user data from SharedPreferences
+    val userData = ApiClient.getUserData()
+    val userImageUrl = if (userData != null) {
+        "${ApiClient.API_BASE_URL}/images/${userData.image}"
+    } else {
+        null
+    }
 
     // Swipe state
     val offsetX = remember { Animatable(0f) }
@@ -77,15 +89,29 @@ fun MainScreen() {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Image(
-                    painter = painterResource(id = R.drawable.user),
-                    contentDescription = "User Profile",
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clickable {
-                            context.startActivity(Intent(context, Profile::class.java))
-                        }
-                )
+                if (userImageUrl != null) {
+                    AsyncImage(
+                        model = userImageUrl,
+                        contentDescription = "User Profile",
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(RoundedCornerShape(50))
+                            .clickable {
+                                context.startActivity(Intent(context, Profile::class.java))
+                            },
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Image(
+                        painter = painterResource(id = R.drawable.user),
+                        contentDescription = "User Profile",
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clickable {
+                                context.startActivity(Intent(context, Profile::class.java))
+                            }
+                    )
+                }
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                     verticalAlignment = Alignment.CenterVertically

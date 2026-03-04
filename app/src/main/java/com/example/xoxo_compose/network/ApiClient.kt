@@ -9,16 +9,23 @@ import io.ktor.client.plugins.auth.*
 import io.ktor.client.plugins.auth.providers.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.plugins.defaultRequest
+import io.ktor.client.plugins.observer.ResponseObserver
+import io.ktor.client.statement.HttpResponse
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.client.plugins.logging.*
 import io.ktor.client.request.*
 import io.ktor.http.*
+import io.ktor.client.plugins.HttpResponseValidator
+import io.ktor.client.network.sockets.ConnectTimeoutException
+import io.ktor.client.plugins.ResponseException
+import io.ktor.serialization.JsonConvertException
 import kotlinx.serialization.*
 import kotlinx.serialization.json.Json
 
 object ApiClient {
 
     private const val BASE_URL = "https://unfemale-scrawnily-elida.ngrok-free.dev"
+    const val API_BASE_URL = BASE_URL  // Public access to base URL
     private const val PREFS_NAME = "xoxo_app_prefs"
     private const val PREF_ACCESS_TOKEN = "access_token"
     private const val PREF_REFRESH_TOKEN = "refresh_token"
@@ -37,6 +44,8 @@ object ApiClient {
             // Load tokens from SharedPreferences on init
             accessToken = sharedPrefs?.getString(PREF_ACCESS_TOKEN, null)
             refreshToken = sharedPrefs?.getString(PREF_REFRESH_TOKEN, null)
+            
+            android.util.Log.d("ApiClient", "Tokens loaded - AccessToken: ${accessToken?.take(20)}..., RefreshToken: ${refreshToken?.take(20)}...")
         }
     }
 
@@ -100,6 +109,17 @@ object ApiClient {
                 }
             }
             level = LogLevel.ALL
+        }
+
+        HttpResponseValidator {
+            handleResponseException { exception ->
+                if (exception is ResponseException && exception.response.status.value == 401) {
+                    android.util.Log.e("API", "401 Unauthorized - Token invalid or expired")
+                    // Clear tokens on 401
+                    clearLoginData()
+                }
+                throw exception
+            }
         }
 
         install(Auth) {
@@ -190,6 +210,91 @@ object ApiClient {
 
         response
     }
+
+    suspend fun getProfile(): Result<ProfileResponse> = runCatching {
+        val response = client.get("/auth/profile").body<ProfileResponse>()
+        
+        // If token is invalid/expired, try to refresh and retry
+        if (!response.status && response.msg.contains("token", ignoreCase = true)) {
+            android.util.Log.d("API", "Token expired, attempting refresh...")
+            
+            if (refreshToken != null) {
+                val refreshResult = refreshAccessToken()
+                if (refreshResult) {
+                    // Retry the request with new token
+                    return@runCatching client.get("/auth/profile").body<ProfileResponse>()
+                }
+            }
+        }
+        
+        response
+    }
+
+    suspend fun updateProfile(
+        fullname: String,
+        country: String,
+        gender: String,
+        bio: String
+    ): Result<UpdateProfileResponse> = runCatching {
+        val request = UpdateProfileRequest(
+            fullname = fullname,
+            country = country,
+            gender = gender,
+            bio = bio
+        )
+
+        val response = client.post("/auth/profile") {
+            setBody(request)
+        }.body<UpdateProfileResponse>()
+
+        // If token is invalid/expired, try to refresh and retry
+        if (!response.status && response.msg.contains("token", ignoreCase = true)) {
+            android.util.Log.d("API", "Token expired, attempting refresh...")
+            
+            if (refreshToken != null) {
+                val refreshResult = refreshAccessToken()
+                if (refreshResult) {
+                    // Retry the request with new token
+                    return@runCatching client.post("/auth/profile") {
+                        setBody(request)
+                    }.body<UpdateProfileResponse>()
+                }
+            }
+        }
+
+        response
+    }
+
+    private suspend fun refreshAccessToken(): Boolean = runCatching {
+        if (refreshToken == null) return@runCatching false
+        
+        val response = client.post("/auth/refresh") {
+            setBody(RefreshRequest(refreshToken!!))
+        }.body<RefreshTokenResponse>()
+
+        if (response.status) {
+            accessToken = response.accessToken
+            refreshToken = response.refreshToken
+            
+            // Update SharedPreferences
+            sharedPrefs?.edit()?.apply {
+                putString(PREF_ACCESS_TOKEN, response.accessToken)
+                putString(PREF_REFRESH_TOKEN, response.refreshToken)
+                apply()
+            }
+            
+            android.util.Log.d("API", "Token refreshed successfully")
+            true
+        } else {
+            android.util.Log.e("API", "Token refresh failed: ${response.msg}")
+            clearLoginData()
+            false
+        }
+    }.getOrElse { exception ->
+        android.util.Log.e("API", "Token refresh error: ${exception.message}")
+        clearLoginData()
+        false
+    }
 }
 
 
@@ -248,4 +353,37 @@ data class UserData(
     val email: String,
     val fullname: String,
     val image: String
+)
+
+@Serializable
+data class ProfileResponse(
+    val status: Boolean,
+    val msg: String,
+    val user: User? = null
+)
+
+@Serializable
+data class User(
+    val id: Int? = null,
+    val fullname: String = "",
+    val email: String = "",
+    val birthdate: String = "",
+    val country: String = "",
+    val image: String = "",
+    val bio: String = "",
+    val sex: String = ""
+)
+
+@Serializable
+data class UpdateProfileRequest(
+    val fullname: String,
+    val country: String,
+    val gender: String,
+    val bio: String
+)
+
+@Serializable
+data class UpdateProfileResponse(
+    val status: Boolean,
+    val msg: String
 )

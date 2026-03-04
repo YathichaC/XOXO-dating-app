@@ -95,7 +95,9 @@ fun LoginScreen() {
                                 isLoading = false
                                 if (response.status) {
                                     android.util.Log.d("Login", "Login successful: ${response.msg}")
-                                    // TODO: Navigate to home screen or dashboard
+                                    // Navigate to Main screen
+                                    context.startActivity(Intent(context, Main::class.java))
+                                    (context as? ComponentActivity)?.finish()
                                 } else {
                                     android.util.Log.e("Login", "Login failed: ${response.msg}")
                                 }
