@@ -23,26 +23,31 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.xoxo_compose.network.ApiClient
 import com.example.xoxo_compose.ui.theme.*
+import kotlinx.coroutines.launch
 
 class Report : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         val userName = intent.getStringExtra("reported_user_name") ?: "Samantha"
+        val userId = intent.getIntExtra("reported_user_id", 0)
         setContent {
             XOXO_composeTheme {
-                ReportScreen(reportedName = userName)
+                ReportScreen(reportedName = userName, reportedUserId = userId)
             }
         }
     }
 }
 
 @Composable
-fun ReportScreen(reportedName: String) {
+fun ReportScreen(reportedName: String, reportedUserId: Int = 0) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var selectedReason by remember { mutableStateOf("") }
     var details by remember { mutableStateOf("") }
+    var isSubmitting by remember { mutableStateOf(false) }
     
     val reasons = listOf("Harassment", "Inappropriate content", "Fake account", "Scam or Spam", "Other")
     val isFormValid = selectedReason.isNotEmpty() && details.isNotEmpty()
@@ -135,10 +140,27 @@ fun ReportScreen(reportedName: String) {
 
             button(
                 label = "Confirm",
-                enabled = isFormValid,
+                enabled = isFormValid && !isSubmitting,
                 onClick = {
-                    // TODO: Handle report submission
-                    context.startActivity(Intent(context, Main::class.java))
+                    isSubmitting = true
+                    scope.launch {
+                        // Submit report to API
+                        val result = ApiClient.submitReport(
+                            targetUserId = reportedUserId,
+                            reason = selectedReason,
+                            detail = details
+                        )
+                        
+                        result.onSuccess { response ->
+                            android.util.Log.d("Report", "✓ Report submitted: ${response.msg}")
+                            android.widget.Toast.makeText(context, response.msg, android.widget.Toast.LENGTH_SHORT).show()
+                            context.startActivity(Intent(context, Main::class.java))
+                        }.onFailure { error ->
+                            android.util.Log.e("Report", "✗ Report failed: ${error.message}")
+                            android.widget.Toast.makeText(context, "Error: ${error.message}", android.widget.Toast.LENGTH_SHORT).show()
+                            isSubmitting = false
+                        }
+                    }
                 },
                 modifier = Modifier.padding(bottom = 30.dp)
             )

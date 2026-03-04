@@ -330,8 +330,7 @@ fun MainScreen() {
                                         intent.putStringArrayListExtra("lifeImages", ArrayList(currentProfile.lifeImages))
                                         context.startActivity(intent)
                                     },
-                                contentScale = ContentScale.Crop,
-                                alpha = 0.6f
+                                contentScale = ContentScale.Crop
                             )
                         } else {
                             Image(
@@ -342,12 +341,12 @@ fun MainScreen() {
                                     .clickable {
                                         context.startActivity(Intent(context, ImageActivity::class.java))
                                     },
-                                contentScale = ContentScale.Crop,
-                                alpha = 0.6f
+                                contentScale = ContentScale.Crop
                             )
                         }
                     }
 
+                    // Action Buttons - Bottom Center
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -400,8 +399,29 @@ fun MainScreen() {
                                 text = "${it.fullname}, ${it.country}",
                                 color = Color.White,
                                 fontSize = 28.sp,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.weight(1f)
                             )
+
+                            Surface(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable {
+                                        val intent = Intent(context, Report::class.java)
+                                        intent.putExtra("reported_user_name", it.fullname)
+                                        intent.putExtra("reported_user_id", it.id)
+                                        context.startActivity(intent)
+                                    },
+                                color = Color(0xFFDC143C)
+                            ) {
+                                Text(
+                                    text = "Report",
+                                    color = Color.White,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(8.dp, 4.dp)
+                                )
+                            }
                         }
 
                         Spacer(modifier = Modifier.height(4.dp))
