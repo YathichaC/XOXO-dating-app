@@ -139,7 +139,7 @@ fun UserImageBox(imageRes: Int, modifier: Modifier = Modifier) {
     ) {
         Box(
             modifier = Modifier
-                .size(125.dp)
+                .size(100.dp)
                 .clip(RoundedCornerShape(10.dp))
                 .background(Color.Black)
                 .border(
