@@ -528,6 +528,21 @@ object ApiClient {
         response
     }
 
+    suspend fun submitReport(targetUserId: Int, reason: String, detail: String): Result<ReportResponse> = runCatching {
+        val request = ReportRequest(
+            targetUserId = targetUserId,
+            reason = reason,
+            detail = detail
+        )
+
+        val response = client.post("/auth/report") {
+            setBody(request)
+        }.body<ReportResponse>()
+
+        android.util.Log.d("API", "Report submitted: ${response.msg}")
+        response
+    }
+
     private suspend fun refreshAccessToken(): Boolean = runCatching {
         if (refreshToken == null) return@runCatching false
         
@@ -731,4 +746,17 @@ data class SwipeResponse(
     val status: Boolean,
     val msg: String,
     val matched: Boolean = false
+)
+
+@Serializable
+data class ReportRequest(
+    val targetUserId: Int,
+    val reason: String,
+    val detail: String
+)
+
+@Serializable
+data class ReportResponse(
+    val status: Boolean,
+    val msg: String
 )
