@@ -117,10 +117,20 @@ fun LoginScreen() {
                                     (context as? ComponentActivity)?.finish()
                                 } else {
                                     android.util.Log.e("Login", "Login failed: ${response.msg}")
+                                    android.widget.Toast.makeText(
+                                        context,
+                                        "Login failed: ${response.msg}",
+                                        android.widget.Toast.LENGTH_LONG
+                                    ).show()
                                 }
                             }.onFailure { error ->
                                 isLoading = false
                                 android.util.Log.e("Login", "Login failed: ${error.message}")
+                                android.widget.Toast.makeText(
+                                    context,
+                                    "Login error: ${error.message}",
+                                    android.widget.Toast.LENGTH_LONG
+                                ).show()
                             }
                         }
                     }

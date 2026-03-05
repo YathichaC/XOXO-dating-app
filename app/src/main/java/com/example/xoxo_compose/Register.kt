@@ -180,11 +180,21 @@ fun register() {
                             ).onSuccess { response ->
                                 isLoading = false
                                 android.util.Log.d("Register", "Registration successful: $response")
-                                // Handle success - navigate to next screen
+                                android.widget.Toast.makeText(
+                                    context,
+                                    "Registration successful! Please login.",
+                                    android.widget.Toast.LENGTH_SHORT
+                                ).show()
+                                context.startActivity(Intent(context, Login::class.java))
+                                (context as? ComponentActivity)?.finish()
                             }.onFailure { error ->
                                 isLoading = false
                                 android.util.Log.e("Register", "Registration failed: ${error.message}")
-                                // Handle error
+                                android.widget.Toast.makeText(
+                                    context,
+                                    "Registration failed: ${error.message}",
+                                    android.widget.Toast.LENGTH_LONG
+                                ).show()
                             }
                         }
                     }
