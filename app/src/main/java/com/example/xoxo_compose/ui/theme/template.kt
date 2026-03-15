@@ -142,7 +142,8 @@ fun InputText(
     value: String? = null,
     onValueChange: ((String) -> Unit)? = null,
     height: Dp = 40.dp,
-    singleLine: Boolean = true
+    singleLine: Boolean = true,
+    visualTransformation: VisualTransformation = VisualTransformation.None
 ) {
     var internalTextValue by remember { mutableStateOf("") }
     val displayValue = value ?: internalTextValue
@@ -172,6 +173,7 @@ fun InputText(
                 }
             },
             singleLine = singleLine,
+            visualTransformation = visualTransformation,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(height),
@@ -187,7 +189,7 @@ fun InputText(
                     innerTextField = innerTextField,
                     enabled = true,
                     singleLine = singleLine,
-                    visualTransformation = VisualTransformation.None,
+                    visualTransformation = visualTransformation,
                     interactionSource = interactionSource,
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = if (singleLine) 0.dp else 12.dp),
                     colors = colors,

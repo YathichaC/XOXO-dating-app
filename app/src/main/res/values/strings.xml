@@ -224,4 +224,7 @@
     <string name="title_activity_gender">Gender</string>
     <string name="title_activity_uploadpic">Uploadpic</string>
     <string name="title_activity_bio">Bio</string>
+    <string name="title_activity_chatlist">Chatlist</string>
+    <string name="title_activity_chatroom">Chatroom</string>
+    <string name="title_activity_matching">Matching</string>
 </resources>

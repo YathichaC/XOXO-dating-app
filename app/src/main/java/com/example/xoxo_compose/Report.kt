@@ -9,7 +9,9 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -33,18 +35,21 @@ class Report : ComponentActivity() {
         enableEdgeToEdge()
         val userName = intent.getStringExtra("reported_user_name") ?: "Samantha"
         val userId = intent.getIntExtra("reported_user_id", 0)
+        val fromChat = intent.getBooleanExtra("from_chat", false)
         setContent {
             XOXO_composeTheme {
-                ReportScreen(reportedName = userName, reportedUserId = userId)
+                ReportScreen(reportedName = userName, reportedUserId = userId, fromChat = fromChat)
             }
         }
     }
 }
 
 @Composable
-fun ReportScreen(reportedName: String, reportedUserId: Int = 0) {
+fun ReportScreen(reportedName: String, reportedUserId: Int = 0, fromChat: Boolean = false) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val scrollState = rememberScrollState()
+    
     var selectedReason by remember { mutableStateOf("") }
     var details by remember { mutableStateOf("") }
     var isSubmitting by remember { mutableStateOf(false) }
@@ -61,6 +66,7 @@ fun ReportScreen(reportedName: String, reportedUserId: Int = 0) {
                 .fillMaxSize()
                 .statusBarsPadding()
                 .padding(horizontal = 30.dp)
+                .verticalScroll(scrollState)
         ) {
             Row(
                 modifier = Modifier
@@ -74,7 +80,11 @@ fun ReportScreen(reportedName: String, reportedUserId: Int = 0) {
                     modifier = Modifier
                         .size(24.dp)
                         .clickable {
-                            context.startActivity(Intent(context, Main::class.java))
+                            if (fromChat) {
+                                context.startActivity(Intent(context, Chatlist::class.java))
+                            } else {
+                                context.startActivity(Intent(context, Main::class.java))
+                            }
                         }
                 )
                 
@@ -132,11 +142,31 @@ fun ReportScreen(reportedName: String, reportedUserId: Int = 0) {
                 value = details,
                 onValueChange = { details = it },
                 modifier = Modifier.fillMaxWidth(),
-                height = 150.dp,
+                height = 120.dp,
                 singleLine = false
             )
 
-            Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.height(25.dp))
+
+            // Evidence Section
+            Column(modifier = Modifier.fillMaxWidth()) {
+                SubTitleText(text = "Evidence")
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    repeat(3) {
+                        AddImageScreen(
+                            modifier = Modifier
+                                .weight(1f)
+                                .aspectRatio(1f)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(40.dp))
 
             button(
                 label = "Confirm",
@@ -154,7 +184,11 @@ fun ReportScreen(reportedName: String, reportedUserId: Int = 0) {
                         result.onSuccess { response ->
                             android.util.Log.d("Report", "✓ Report submitted: ${response.msg}")
                             android.widget.Toast.makeText(context, response.msg, android.widget.Toast.LENGTH_SHORT).show()
-                            context.startActivity(Intent(context, Main::class.java))
+                            if (fromChat) {
+                                context.startActivity(Intent(context, Chatlist::class.java))
+                            } else {
+                                context.startActivity(Intent(context, Main::class.java))
+                            }
                         }.onFailure { error ->
                             android.util.Log.e("Report", "✗ Report failed: ${error.message}")
                             android.widget.Toast.makeText(context, "Error: ${error.message}", android.widget.Toast.LENGTH_SHORT).show()

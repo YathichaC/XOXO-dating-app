@@ -194,7 +194,9 @@ fun MainScreen() {
                                 contentDescription = "Chat",
                                 modifier = Modifier
                                     .size(30.dp)
-                                    .clickable { /* TODO: Chat Action */ }
+                                    .clickable {
+                                        context.startActivity(Intent(context, Chatlist::class.java))
+                                    }
                             )
                             CircleNumberBadge(
                                 number = "3",

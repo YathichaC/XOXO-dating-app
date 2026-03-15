@@ -24,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringArrayResource
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.xoxo_compose.network.ApiClient
@@ -96,7 +97,8 @@ fun register() {
                 InputText(
                     label = "Password",
                     value = password,
-                    onValueChange = { password = it }
+                    onValueChange = { password = it },
+                    visualTransformation = PasswordVisualTransformation()
                 )
                 
                 Column {
