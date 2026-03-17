@@ -227,4 +227,5 @@
     <string name="title_activity_chatlist">Chatlist</string>
     <string name="title_activity_chatroom">Chatroom</string>
     <string name="title_activity_matching">Matching</string>
+    <string name="title_activity_banned">Banned</string>
 </resources>
