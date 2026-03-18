@@ -65,7 +65,7 @@ fun ChatListScreen() {
     val chats = remember { mutableStateOf<List<ChatItem>>(emptyList()) }
     val loading = remember { mutableStateOf(true) }
     val error = remember { mutableStateOf<String?>(null) }
-    
+
     // ✅ Get current user ID from SharedPreferences
     val currentUserID = remember {
         val sharedPrefs = context.getSharedPreferences("xoxo_app_prefs", android.content.Context.MODE_PRIVATE)
@@ -125,7 +125,7 @@ fun ChatListScreen() {
                             context.startActivity(Intent(context, Main::class.java))
                         }
                 )
-                
+
                 Text(
                     text = "Chat",
                     color = Color.White,
@@ -137,7 +137,6 @@ fun ChatListScreen() {
 
             when {
                 loading.value -> {
-                    // Loading state
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -147,7 +146,6 @@ fun ChatListScreen() {
                     }
                 }
                 error.value != null -> {
-                    // Error state
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -172,7 +170,6 @@ fun ChatListScreen() {
                     }
                 }
                 chats.value.isEmpty() -> {
-                    // Empty state
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -186,7 +183,6 @@ fun ChatListScreen() {
                     }
                 }
                 else -> {
-                    // Chat list
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(bottom = 20.dp)
@@ -218,18 +214,17 @@ fun ChatItemRow(chat: ChatItem, currentUserID: Int) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 8.dp)
-            .clickable { 
-                // Navigate to ChatRoom screen
+            .clickable {
                 val intent = Intent(context, Chatroom::class.java)
                 intent.putExtra("matchesID", chat.matchesID)
                 intent.putExtra("matchedUserId", chat.matchedUserId)
                 intent.putExtra("name", chat.name)
+                intent.putExtra("userImage", chat.imageUrl)      // ✅ Pass profile image
                 intent.putExtra("currentUserID", currentUserID)  // ✅ Pass current user ID
                 context.startActivity(intent)
             },
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Load image from URL using Coil
         if (chat.imageUrl.isNotEmpty()) {
             AsyncImage(
                 model = ApiClient.API_BASE_URL + "/images/" + chat.imageUrl,
@@ -241,7 +236,6 @@ fun ChatItemRow(chat: ChatItem, currentUserID: Int) {
                 contentScale = ContentScale.Crop
             )
         } else {
-            // Fallback to default user image
             Image(
                 painter = painterResource(id = R.drawable.user),
                 contentDescription = null,

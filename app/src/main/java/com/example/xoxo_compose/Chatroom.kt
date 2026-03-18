@@ -12,6 +12,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -25,20 +26,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.rememberAsyncImagePainter
 import com.example.xoxo_compose.network.ApiClient
 import com.example.xoxo_compose.ui.theme.XOXO_composeTheme
-
-// ✅ FIX 1: Use aliases to avoid conflict between io.socket.client.IO and kotlinx.coroutines.Dispatchers.IO
 import io.socket.client.IO as SocketIO
 import io.socket.client.Socket as SocketClient
-
-// ✅ FIX 2: Removed conflicting imports:
-//   - REMOVED: import kotlinx.coroutines.Dispatchers.IO  (was shadowing io.socket.client.IO)
-//   - REMOVED: import java.net.Socket                    (was shadowing io.socket.client.Socket)
-//   - REMOVED: import java.net.URISyntaxException        (replaced with java.net below)
 import java.net.URISyntaxException
 import org.json.JSONObject
 
@@ -46,21 +42,22 @@ class Chatroom : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        
-        // Initialize SharedPreferences first
+
         ApiClient.initSharedPreferences(this)
-        
-        val matchesID = intent.getIntExtra("matchesID", 0)
-        val matchedUserId = intent.getIntExtra("matchedUserId", 0)
-        val userName = intent.getStringExtra("name") ?: "User"
-        val currentUserID = intent.getIntExtra("currentUserID", 0)  // ✅ Get from intent
+
+        val matchesID      = intent.getIntExtra("matchesID", 0)
+        val matchedUserId  = intent.getIntExtra("matchedUserId", 0)
+        val userName       = intent.getStringExtra("name") ?: "User"
+        val userImage      = intent.getStringExtra("userImage") ?: ""   // ← NEW
+        val currentUserID  = intent.getIntExtra("currentUserID", 0)
 
         setContent {
             XOXO_composeTheme {
                 ChatroomScreen(
-                    matchesID = matchesID,
+                    matchesID     = matchesID,
                     matchedUserId = matchedUserId,
-                    userName = userName,
+                    userName      = userName,
+                    userImage     = userImage,                          // ← NEW
                     currentUserID = currentUserID
                 )
             }
@@ -81,196 +78,135 @@ fun ChatroomScreen(
     matchesID: Int,
     matchedUserId: Int,
     userName: String,
-    currentUserID: Int = 0  // ✅ New parameter
+    userImage: String = "",                                             // ← NEW
+    currentUserID: Int = 0
 ) {
-    val context = LocalContext.current
+    val context     = LocalContext.current
     var messageText by remember { mutableStateOf("") }
+    val messages    = remember { mutableStateListOf<Message>() }
+    val loading     = remember { mutableStateOf(true) }
+    val socket      = remember { mutableStateOf<SocketClient?>(null) }
+    val listState   = rememberLazyListState()
 
-    val messages = remember { mutableStateListOf<Message>() }
-    val loading = remember { mutableStateOf(true) }
-
-    // ✅ FIX 3: Type is now SocketClient (aliased io.socket.client.Socket) instead of java.net.Socket
-    val socket = remember { mutableStateOf<SocketClient?>(null) }
-
-    // ✅ Get userID - Try multiple sources in order of preference
     val userID = remember {
-        // 1. Try intent parameter first (most reliable)
-        if (currentUserID > 0) {
-            Log.d("Socket", "✓ Using userID from intent: $currentUserID")
-            return@remember currentUserID
-        }
-        
-        // 2. Try from SharedPreferences
+        if (currentUserID > 0) return@remember currentUserID
         val sharedPrefs = context.getSharedPreferences("xoxo_app_prefs", android.content.Context.MODE_PRIVATE)
-        var id = sharedPrefs.getInt("user_id", 0)
-        if (id > 0) {
-            Log.d("Socket", "✓ Using userID from SharedPreferences: $id")
-            return@remember id
-        }
-        
-        // 3. Try to get from all saved preferences
-        val allPrefs = sharedPrefs.all
-        Log.d("Socket", "⚠️ SharedPreferences contents: $allPrefs")
-        
-        // 4. Last resort - try to extract from email hash or other means
-        val email = sharedPrefs.getString("user_email", "")
-        if (!email.isNullOrEmpty()) {
-            Log.d("Socket", "⚠️ Found email but no user_id: $email")
-        }
-        
-        Log.e("Socket", "❌ Could not find valid userID in any source!")
+        val id = sharedPrefs.getInt("user_id", 0)
+        if (id > 0) return@remember id
+        Log.e("Socket", "❌ Could not find valid userID!")
         0
     }
 
-    // Initialize Socket.io
+    // Auto-scroll to bottom when new messages arrive
+    LaunchedEffect(messages.size) {
+        if (messages.isNotEmpty()) {
+            listState.animateScrollToItem(messages.size - 1)
+        }
+    }
+
+    // Socket.io setup
     LaunchedEffect(matchesID, userID) {
         if (userID <= 0) {
-            Log.e("Socket", "❌ Invalid userID: $userID - Socket connection aborted")
+            Log.e("Socket", "❌ Invalid userID: $userID — aborted")
             return@LaunchedEffect
         }
-
-        Log.d("Socket", "✓ Starting Socket connection with userID: $userID")
-
         try {
-            // ✅ FIX 4: Use SocketIO alias instead of IO (which was resolving to Dispatchers.IO)
-            val opts = SocketIO.Options()
-            opts.reconnection = true
-            opts.reconnectionDelay = 1000
-            opts.reconnectionDelayMax = 5000
-            opts.reconnectionAttempts = 5
+            val opts = SocketIO.Options().apply {
+                reconnection = true
+                reconnectionDelay = 1000
+                reconnectionDelayMax = 5000
+                reconnectionAttempts = 5
+            }
+            val newSocket = SocketIO.socket(ApiClient.API_BASE_URL, opts)
 
-            val baseUrl = ApiClient.API_BASE_URL
-
-            // ✅ FIX 5: Use SocketIO alias for socket factory call
-            val newSocket = SocketIO.socket(baseUrl, opts)
-
-            // ✅ FIX 6: Use SocketClient.EVENT_CONNECT (aliased io.socket.client.Socket)
             newSocket.on(SocketClient.EVENT_CONNECT) {
-                Log.d("Socket", "✅ Socket connected successfully with ID: ${newSocket.id()}")
-
-                val joinObj = JSONObject()
-                joinObj.put("matchesID", matchesID)
-                joinObj.put("userID", userID)
-                Log.d("Socket", "📤 Emitting join-room with: matchesID=$matchesID, userID=$userID")
-                newSocket.emit("join-room", joinObj)
-
-                val histObj = JSONObject()
-                histObj.put("matchesID", matchesID)
-                histObj.put("limit", 50)
-                Log.d("Socket", "📤 Emitting load-chat-history with: matchesID=$matchesID, limit=50")
-                newSocket.emit("load-chat-history", histObj)
+                Log.d("Socket", "✅ Connected: ${newSocket.id()}")
+                newSocket.emit("join-room", JSONObject().apply {
+                    put("matchesID", matchesID); put("userID", userID)
+                })
+                newSocket.emit("load-chat-history", JSONObject().apply {
+                    put("matchesID", matchesID); put("limit", 50)
+                })
             }
 
-            // Chat history event
-            newSocket.on("chat-history") { args: Array<Any> ->
+            newSocket.on("chat-history") { args ->
                 try {
-                    if (args.isNotEmpty()) {
-                        val data = args[0] as? JSONObject
-                        if (data != null) {
-                            val messagesArray = data.optJSONArray("messages")
-                            val loadedMessages = mutableListOf<Message>()
-
-                            if (messagesArray != null) {
-                                for (i in 0 until messagesArray.length()) {
-                                    val msgObj = messagesArray.getJSONObject(i)
-                                    loadedMessages.add(
-                                        Message(
-                                            id = msgObj.optInt("id", 0),
-                                            text = msgObj.optString("content", ""),
-                                            isMe = msgObj.optInt("userID", 0) == userID,
-                                            userID = msgObj.optInt("userID", 0),
-                                            timestamp = msgObj.optString("create_at", "")
-                                        )
-                                    )
-                                }
-                            }
-
-                            messages.clear()
-                            messages.addAll(loadedMessages)
-                            loading.value = false
-                            Log.d("Socket", "✅ Loaded ${loadedMessages.size} messages")
-                        }
+                    val data = args.getOrNull(0) as? JSONObject ?: return@on
+                    val arr  = data.optJSONArray("messages") ?: return@on
+                    val loaded = (0 until arr.length()).map { i ->
+                        val m = arr.getJSONObject(i)
+                        Message(
+                            id        = m.optInt("id", 0),
+                            text      = m.optString("content", ""),
+                            isMe      = m.optInt("userID", 0) == userID,
+                            userID    = m.optInt("userID", 0),
+                            timestamp = m.optString("create_at", "")
+                        )
                     }
+                    messages.clear()
+                    messages.addAll(loaded)
+                    loading.value = false
+                    Log.d("Socket", "✅ Loaded ${loaded.size} messages")
                 } catch (e: Exception) {
-                    Log.e("Socket", "❌ Error loading chat history: ${e.message}")
+                    Log.e("Socket", "❌ History error: ${e.message}")
                 }
             }
 
-            // Incoming message event
-            newSocket.on("chat-$matchesID") { args: Array<Any> ->
+            newSocket.on("chat-$matchesID") { args ->
                 try {
-                    if (args.isNotEmpty()) {
-                        val msgData = args[0] as? JSONObject
-                        if (msgData != null) {
-                            messages.add(
-                                Message(
-                                    id = msgData.optInt("id", 0),
-                                    text = msgData.optString("content", ""),
-                                    isMe = msgData.optInt("userID", 0) == userID,
-                                    userID = msgData.optInt("userID", 0),
-                                    timestamp = msgData.optString("create_at", "")
-                                )
-                            )
-                            Log.d("Socket", "📨 Received new message from user ${msgData.optInt("userID", 0)}")
-                        }
-                    }
+                    val msgData = args.getOrNull(0) as? JSONObject ?: return@on
+                    messages.add(Message(
+                        id        = msgData.optInt("id", 0),
+                        text      = msgData.optString("content", ""),
+                        isMe      = msgData.optInt("userID", 0) == userID,
+                        userID    = msgData.optInt("userID", 0),
+                        timestamp = msgData.optString("create_at", "")
+                    ))
                 } catch (e: Exception) {
-                    Log.e("Socket", "❌ Error receiving message: ${e.message}")
+                    Log.e("Socket", "❌ Message error: ${e.message}")
                 }
             }
 
-            // Error handler
-            newSocket.on("chat-error") { args: Array<Any> ->
-                if (args.isNotEmpty()) {
-                    val err = args[0] as? JSONObject
-                    Log.e("Socket", "Error: ${err?.optString("msg", "unknown")}")
-                }
+            newSocket.on("chat-error") { args ->
+                val err = args.getOrNull(0) as? JSONObject
+                Log.e("Socket", "Error: ${err?.optString("msg", "unknown")}")
             }
 
-            // ✅ FIX 7: Use SocketClient.EVENT_CONNECT_ERROR instead of Socket.EVENT_CONNECT_ERROR
-            newSocket.on(SocketClient.EVENT_CONNECT_ERROR) { args: Array<Any> ->
-                Log.e("Socket", "Connection error: ${args.joinToString()}")
+            newSocket.on(SocketClient.EVENT_CONNECT_ERROR) { args ->
+                Log.e("Socket", "Connect error: ${args.joinToString()}")
             }
 
             newSocket.connect()
             socket.value = newSocket
-            Log.d("Socket", "✓ Socket.connect() called - awaiting connection...")
-
         } catch (e: URISyntaxException) {
-            Log.e("Socket", "❌ URI Syntax error: ${e.message}")
+            Log.e("Socket", "❌ URI error: ${e.message}")
         } catch (e: Exception) {
-            Log.e("Socket", "❌ Socket initialization error: ${e.message}", e)
+            Log.e("Socket", "❌ Socket error: ${e.message}", e)
         }
     }
 
-    // Cleanup — FIX 8: socket.value is now SocketClient so .emit() and .disconnect() resolve correctly
     DisposableEffect(Unit) {
         onDispose {
             socket.value?.let { s ->
-                val leaveObj = JSONObject()
-                leaveObj.put("matchesID", matchesID)
-                leaveObj.put("userID", userID)
-                s.emit("leave-room", leaveObj)
+                s.emit("leave-room", JSONObject().apply {
+                    put("matchesID", matchesID); put("userID", userID)
+                })
                 s.disconnect()
             }
         }
     }
 
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = Color.Black
-    ) {
+    Surface(modifier = Modifier.fillMaxSize(), color = Color.Black) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding()
-                .padding(horizontal = 30.dp)
         ) {
-            // Header
+            // ── Header ────────────────────────────────────────────
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 30.dp, bottom = 16.dp),
+                    .padding(horizontal = 20.dp, vertical = 16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Image(
@@ -282,26 +218,27 @@ fun ChatroomScreen(
                             context.startActivity(Intent(context, Chatlist::class.java))
                         }
                 )
-                Spacer(modifier = Modifier.width(16.dp))
-                Image(
-                    painter = painterResource(id = R.drawable.user),
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(Color.DarkGray),
-                    contentScale = ContentScale.Crop
-                )
+                Spacer(modifier = Modifier.width(14.dp))
+
+                // ── Profile image: Coil if URL available, fallback to drawable ──
+                val imageUrl = if (userImage.isNotEmpty())
+                    "${ApiClient.API_BASE_URL}/uploads/$userImage"
+                else null
+
+
+
                 Spacer(modifier = Modifier.width(12.dp))
-                Text(
-                    text = userName,
-                    color = Color.White,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold
-                )
+                Column {
+                    Text(
+                        text = userName,
+                        color = Color.White,
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
 
-            // Messages
+            // ── Messages ──────────────────────────────────────────
             if (loading.value) {
                 Box(
                     modifier = Modifier
@@ -309,17 +246,16 @@ fun ChatroomScreen(
                         .fillMaxWidth(),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = "Loading messages...",
-                        color = Color.LightGray
-                    )
+                    Text("Loading messages...", color = Color.LightGray)
                 }
             } else {
                 LazyColumn(
+                    state = listState,
                     modifier = Modifier
                         .weight(1f)
-                        .fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
                     contentPadding = PaddingValues(vertical = 8.dp)
                 ) {
                     items(messages) { message ->
@@ -328,39 +264,79 @@ fun ChatroomScreen(
                 }
             }
 
-            // Input area
+            // ── Input area ────────────────────────────────────────
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 30.dp)
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
                     .navigationBarsPadding(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                ChatTextField(
-                    value = messageText,
-                    onValueChange = { messageText = it },
-                    modifier = Modifier.weight(1f)
-                )
-                Image(
-                    painter = painterResource(id = R.drawable.send),
-                    contentDescription = "Send",
+                // Text input
+                Surface(
+                    color = Color(0xFF1E1E1E),
+                    shape = RoundedCornerShape(24.dp),
                     modifier = Modifier
-                        .size(30.dp)
-                        .clickable {
-                            // ✅ FIX 9: socket.value is SocketClient so .emit() resolves correctly
-                            if (messageText.trim().isNotEmpty() && socket.value != null) {
-                                val msgObj = JSONObject()
-                                msgObj.put("matchesID", matchesID)
-                                msgObj.put("content", messageText)
-                                msgObj.put("type", "text")
-                                msgObj.put("userID", userID)
-                                Log.d("Socket", "📤 Sending message: '$messageText' (userID=$userID, matchesID=$matchesID)")
-                                socket.value?.emit("chat", msgObj)
+                        .weight(1f)
+                        .defaultMinSize(minHeight = 46.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 18.dp, vertical = 12.dp),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        if (messageText.isEmpty()) {
+                            Text(
+                                text = "Type a message...",
+                                color = Color(0xFF666666),
+                                fontSize = 14.sp
+                            )
+                        }
+                        BasicTextField(
+                            value = messageText,
+                            onValueChange = { messageText = it },
+                            textStyle = TextStyle(
+                                color = Color.White,
+                                fontSize = 14.sp
+                            ),
+                            modifier = Modifier.fillMaxWidth(),
+                            cursorBrush = androidx.compose.ui.graphics.SolidColor(Color.White)
+                        )
+                    }
+                }
+
+                // Send button
+                Box(
+                    modifier = Modifier
+                        .size(46.dp)
+                        .clip(CircleShape)
+                        .background(
+                            if (messageText.trim().isNotEmpty()) Color(0xFFDD4F4F)
+                            else Color(0xFF2A2A2A)
+                        )
+                        .clickable(enabled = messageText.trim().isNotEmpty()) {
+                            socket.value?.let { s ->
+                                val msgObj = JSONObject().apply {
+                                    put("matchesID", matchesID)
+                                    put("content", messageText.trim())
+                                    put("type", "text")
+                                    put("userID", userID)
+                                }
+                                Log.d("Socket", "📤 Sending: '${messageText.trim()}'")
+                                s.emit("chat", msgObj)
                                 messageText = ""
                             }
-                        }
-                )
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.send),
+                        contentDescription = "Send",
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
         }
     }
@@ -371,58 +347,25 @@ fun ChatMessageBubble(message: Message) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
+            .padding(vertical = 2.dp),
         horizontalArrangement = if (message.isMe) Arrangement.End else Arrangement.Start
     ) {
         Surface(
-            color = if (message.isMe) Color(0xFFDD4F4F) else Color.DarkGray,
-            shape = RoundedCornerShape(12.dp),
-            modifier = Modifier.widthIn(max = 250.dp)
+            color = if (message.isMe) Color(0xFFDD4F4F) else Color(0xFF2A2A2A),
+            shape = RoundedCornerShape(
+                topStart = 16.dp,
+                topEnd = 16.dp,
+                bottomStart = if (message.isMe) 16.dp else 4.dp,
+                bottomEnd = if (message.isMe) 4.dp else 16.dp
+            ),
+            modifier = Modifier.widthIn(max = 260.dp)
         ) {
             Text(
                 text = message.text,
                 color = Color.White,
                 fontSize = 14.sp,
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
-            )
-        }
-    }
-}
-
-@Composable
-fun ChatTextField(
-    value: String,
-    onValueChange: (String) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Surface(
-        color = Color.DarkGray,
-        shape = RoundedCornerShape(18.dp),
-        modifier = modifier.height(40.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp),
-            contentAlignment = Alignment.CenterStart
-        ) {
-            if (value.isEmpty()) {
-                Text(
-                    text = "Type message...",
-                    color = Color.LightGray,
-                    fontSize = 14.sp
-                )
-            }
-            BasicTextField(
-                value = value,
-                onValueChange = onValueChange,
-                textStyle = androidx.compose.ui.text.TextStyle(
-                    color = Color.White,
-                    fontSize = 14.sp
-                ),
-                modifier = Modifier.fillMaxSize(),
-                singleLine = true,
-                cursorBrush = androidx.compose.ui.graphics.SolidColor(Color.White)
+                lineHeight = 20.sp,
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)
             )
         }
     }
