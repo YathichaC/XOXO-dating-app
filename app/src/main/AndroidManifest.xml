@@ -31,6 +31,11 @@
                 android:resource="@xml/file_paths" />
         </provider>
         <activity
+            android:name=".Banned"
+            android:exported="false"
+            android:label="@string/title_activity_banned"
+            android:theme="@style/Theme.XOXO_compose" />
+        <activity
             android:name=".Matching"
             android:exported="false"
             android:label="@string/title_activity_matching"

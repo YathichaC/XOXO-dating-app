@@ -83,7 +83,7 @@ fun register() {
                 Title("Register")
 
                 InputText(
-                    label = "Full Name",
+                    label = "Username",
                     value = username,
                     onValueChange = { username = it }
                 )
