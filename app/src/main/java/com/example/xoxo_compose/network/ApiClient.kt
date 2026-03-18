@@ -29,6 +29,7 @@ object ApiClient {
     private const val PREFS_NAME = "xoxo_app_prefs"
     private const val PREF_ACCESS_TOKEN = "access_token"
     private const val PREF_REFRESH_TOKEN = "refresh_token"
+    private const val PREF_USER_ID = "user_id"
     private const val PREF_USER_EMAIL = "user_email"
     private const val PREF_USER_FULLNAME = "user_fullname"
     private const val PREF_USER_IMAGE = "user_image"
@@ -38,6 +39,9 @@ object ApiClient {
     private const val PREF_LIFE_IMAGE_4 = "life_image_4"
     private const val PREF_LIFE_IMAGE_5 = "life_image_5"
     private const val PREF_LIFE_IMAGE_6 = "life_image_6"
+    private const val PREF_FILTER_AGE_RANGE = "filter_age_range"
+    private const val PREF_FILTER_COUNTRY = "filter_country"
+    private const val PREF_FILTER_GENDER = "filter_gender"
 
     private var sharedPrefs: SharedPreferences? = null
 
@@ -76,6 +80,7 @@ object ApiClient {
         
         android.util.Log.d("ApiClient", "=== SAVE LOGIN DATA START ===")
         android.util.Log.d("ApiClient", "User: ${response.fullname} (${response.email})")
+        android.util.Log.d("ApiClient", "UserID: ${response.userId}")
         android.util.Log.d("ApiClient", "SharedPrefs is null: ${sharedPrefs == null}")
         
         if (sharedPrefs == null) {
@@ -87,6 +92,7 @@ object ApiClient {
             sharedPrefs?.edit()?.apply {
                 putString(PREF_ACCESS_TOKEN, response.accessToken)
                 putString(PREF_REFRESH_TOKEN, response.refreshToken)
+                putInt(PREF_USER_ID, response.userId)
                 putString(PREF_USER_EMAIL, response.email)
                 putString(PREF_USER_FULLNAME, response.fullname)
                 putString(PREF_USER_IMAGE, response.image ?: "default.jpg")
@@ -96,7 +102,8 @@ object ApiClient {
             // Verify data was actually saved
             val verifyEmail = sharedPrefs?.getString(PREF_USER_EMAIL, null)
             val verifyName = sharedPrefs?.getString(PREF_USER_FULLNAME, null)
-            android.util.Log.d("ApiClient", "Saved to SharedPreferences - Email: $verifyEmail, Name: $verifyName")
+            val verifyUserId = sharedPrefs?.getInt(PREF_USER_ID, -999)
+            android.util.Log.d("ApiClient", "✅ Saved to SharedPreferences - Email: $verifyEmail, Name: $verifyName, UserID: $verifyUserId")
             
             // CRITICAL: Recreate HTTP client so it picks up new tokens!
             android.util.Log.d("ApiClient", "Recreating HTTP client to reload tokens...")
@@ -126,6 +133,7 @@ object ApiClient {
         sharedPrefs?.edit()?.apply {
             remove(PREF_ACCESS_TOKEN)
             remove(PREF_REFRESH_TOKEN)
+            remove(PREF_USER_ID)
             remove(PREF_USER_EMAIL)
             remove(PREF_USER_FULLNAME)
             remove(PREF_USER_IMAGE)
@@ -138,7 +146,7 @@ object ApiClient {
             apply()
         }
         
-        android.util.Log.d("ApiClient", "Cleared all 11 SharedPreferences entries")
+        android.util.Log.d("ApiClient", "Cleared all 12 SharedPreferences entries")
         
         // Close and reset HTTP client
         android.util.Log.d("ApiClient", "Closing old HTTP client...")
@@ -238,6 +246,40 @@ object ApiClient {
                 image6 = it.getString(PREF_LIFE_IMAGE_6, "") ?: ""
             )
         }
+    }
+
+    fun saveFilterPreferences(ageRange: String, country: String, gender: String) {
+        sharedPrefs?.edit()?.apply {
+            putString(PREF_FILTER_AGE_RANGE, ageRange)
+            putString(PREF_FILTER_COUNTRY, country)
+            putString(PREF_FILTER_GENDER, gender)
+            apply()
+        }
+        android.util.Log.d("ApiClient", "Filter preferences saved: ageRange=$ageRange, country=$country, gender=$gender")
+    }
+
+    fun getFilterPreferences(): FilterPreferences? {
+        return sharedPrefs?.let {
+            val ageRange = it.getString(PREF_FILTER_AGE_RANGE, "") ?: ""
+            val country = it.getString(PREF_FILTER_COUNTRY, "") ?: ""
+            val gender = it.getString(PREF_FILTER_GENDER, "") ?: ""
+            
+            if (ageRange.isEmpty() && country.isEmpty() && gender.isEmpty()) {
+                null
+            } else {
+                FilterPreferences(ageRange = ageRange, country = country, gender = gender)
+            }
+        }
+    }
+
+    fun clearFilterPreferences() {
+        sharedPrefs?.edit()?.apply {
+            remove(PREF_FILTER_AGE_RANGE)
+            remove(PREF_FILTER_COUNTRY)
+            remove(PREF_FILTER_GENDER)
+            apply()
+        }
+        android.util.Log.d("ApiClient", "Filter preferences cleared")
     }
 
     private var _client: HttpClient? = null
@@ -500,6 +542,30 @@ object ApiClient {
         response
     }
 
+    suspend fun discoverMatches(limit: String = "10", ageRange: String = "", country: String = "", gender: String = ""): Result<DiscoverResponse> = runCatching {
+        val url = StringBuilder("/auth/discover?limit=$limit")
+        if (ageRange.isNotEmpty()) url.append("&ageRange=$ageRange")
+        if (country.isNotEmpty()) url.append("&country=$country")
+        if (gender.isNotEmpty()) url.append("&gender=$gender")
+        
+        val response = client.get(url.toString()).body<DiscoverResponse>()
+        
+        // If token is invalid/expired, try to refresh and retry
+        if (!response.status && response.msg.contains("token", ignoreCase = true)) {
+            android.util.Log.d("API", "Token expired, attempting refresh...")
+            
+            if (refreshToken != null) {
+                val refreshResult = refreshAccessToken()
+                if (refreshResult) {
+                    // Retry the request with new token
+                    return@runCatching client.get(url.toString()).body<DiscoverResponse>()
+                }
+            }
+        }
+        
+        response
+    }
+
     suspend fun recordSwipe(targetUserId: Int, swipeType: String): Result<SwipeResponse> = runCatching {
         val request = SwipeRequest(
             targetUserId = targetUserId,
@@ -541,6 +607,65 @@ object ApiClient {
 
         android.util.Log.d("API", "Report submitted: ${response.msg}")
         response
+    }
+
+    suspend fun getChatList(): Result<ChatListResponse> = runCatching {
+        val response = client.get("/chat/list").body<ChatListResponse>()
+        
+        // If token is invalid/expired, try to refresh and retry
+        if (!response.status && response.msg.contains("token", ignoreCase = true)) {
+            android.util.Log.d("API", "Token expired, attempting refresh...")
+            
+            if (refreshToken != null) {
+                val refreshResult = refreshAccessToken()
+                if (refreshResult) {
+                    // Retry the request with new token
+                    return@runCatching client.get("/chat/list").body<ChatListResponse>()
+                }
+            }
+        }
+        
+        response
+    }
+
+    suspend fun checkKYCStatus(userID: Int): Result<KYCStatusResponse> = runCatching {
+        client.get("/kyc/status/$userID").body<KYCStatusResponse>()
+    }
+
+    // ─── ADD this suspend function inside ApiClient object ───────────────────────
+
+    suspend fun submitKYCImages(
+        internationalCardImage: String,  // pure base64 of บัตรประชาชน
+        personAndCardImage: String       // pure base64 of ภาพยื่นกับบัตร
+    ): Result<KYCSubmitResponse> = runCatching {
+        val request = KYCSubmitRequest(
+            internationalCardImage = internationalCardImage,
+            personAndCardImage = personAndCardImage
+        )
+        client.post("/kyc/submit") {
+            setBody(request)
+        }.body<KYCSubmitResponse>()
+    }
+
+    suspend fun checkKYC(): Result<KYCCheckResponse> = runCatching {
+        client.post("/kyc/check").body<KYCCheckResponse>()
+    }
+
+    suspend fun initiateKYCVerification(userID: Int): Result<KYCVerificationResponse> = runCatching {
+        val request = InitiateKYCRequest(userId = userID)
+        client.post("/kyc/initiate") {
+            setBody(request)
+        }.body<KYCVerificationResponse>()
+    }
+
+    suspend fun verifyKYCCallback(sessionId: String, status: String): Result<KYCCallbackResponse> = runCatching {
+        val request = KYCCallbackRequest(
+            sessionId = sessionId,
+            status = status
+        )
+        client.post("/kyc/callback") {
+            setBody(request)
+        }.body<KYCCallbackResponse>()
     }
 
     private suspend fun refreshAccessToken(): Boolean = runCatching {
@@ -622,6 +747,7 @@ data class LoginResponse(
     val msg: String,
     val refreshToken: String,
     val accessToken: String,
+    val userId: Int = 0,
     val image: String? = "default.jpg",
     val fullname: String,
     val email: String
@@ -706,6 +832,21 @@ data class UploadLifestyleImagesResponse(
     val image6: String = ""
 )
 
+
+// ─── ADD these data classes at the bottom of ApiClient.kt ───────────────────
+
+@Serializable
+data class KYCSubmitRequest(
+    @SerialName("international_card_image") val internationalCardImage: String,
+    @SerialName("person_and_card_image") val personAndCardImage: String
+)
+
+@Serializable
+data class KYCSubmitResponse(
+    val status: Boolean,
+    val msg: String
+)
+
 data class LifestyleImagesData(
     val image1: String,
     val image2: String,
@@ -713,6 +854,12 @@ data class LifestyleImagesData(
     val image4: String,
     val image5: String,
     val image6: String
+)
+
+data class FilterPreferences(
+    val ageRange: String,
+    val country: String,
+    val gender: String
 )
 
 @Serializable
@@ -759,4 +906,77 @@ data class ReportRequest(
 data class ReportResponse(
     val status: Boolean,
     val msg: String
+)
+
+@Serializable
+data class ChatListResponse(
+    val status: Boolean,
+    val msg: String,
+    val count: Int = 0,
+    val matches: List<ChatMatch> = emptyList()
+)
+
+@Serializable
+data class ChatMatch(
+    val matchesID: Int,
+    val matchedUserId: Int,
+    val fullname: String,
+    val image: String = "",
+    val lastMessage: String? = null,
+    val lastMessageTime: String? = null
+)
+
+// KYC Data Classes
+@Serializable
+data class InitiateKYCRequest(
+    val userId: Int
+)
+
+@Serializable
+data class KYCStatusResponse(
+    val status: Boolean,
+    val msg: String,
+    val kycStatus: String = "pending", // "pending", "verified", "rejected"
+    val sessionId: String? = null,
+    val verificationUrl: String? = null
+)
+
+@Serializable
+data class KYCVerificationResponse(
+    val status: Boolean,
+    val msg: String,
+    val sessionId: String = "",
+    val verificationUrl: String = ""
+)
+
+@Serializable
+data class KYCCallbackRequest(
+    val sessionId: String,
+    val status: String // "approved", "rejected"
+)
+
+@Serializable
+data class KYCCallbackResponse(
+    val status: Boolean,
+    val msg: String,
+    val userId: Int = 0,
+    val verificationStatus: String = ""
+)
+
+
+@Serializable
+data class KYCCheckResponse(
+    val status: Boolean,
+    val msg: String,
+    val verified: Boolean = false,
+    val kyc: KYCDetail? = null
+)
+
+@Serializable
+data class KYCDetail(
+    val id: Int = 0,
+    @SerialName("user_id") val userId: Int = 0,
+    @SerialName("international_card_image") val internationalCardImage: String = "",
+    @SerialName("person_and_card_image") val personAndCardImage: String = "",
+    @SerialName("created_at") val createdAt: String = ""
 )

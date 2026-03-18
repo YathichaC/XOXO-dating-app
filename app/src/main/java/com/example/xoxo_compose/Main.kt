@@ -111,22 +111,53 @@ fun MainScreen() {
             
             userData = freshUserData
             
-            ApiClient.getDiscoverProfiles(limit = 20)
-                .onSuccess { response ->
+            // Check if there are saved filter preferences
+            val savedFilter = ApiClient.getFilterPreferences()
+            
+            if (savedFilter != null) {
+                android.util.Log.d("MainScreen", "Using saved filter: age=${savedFilter.ageRange}, country=${savedFilter.country}, gender=${savedFilter.gender}")
+                
+                // Use discoverMatches with saved filters
+                ApiClient.discoverMatches(
+                    limit = "20",
+                    ageRange = savedFilter.ageRange,
+                    country = savedFilter.country,
+                    gender = savedFilter.gender
+                ).onSuccess { response ->
                     if (response.status) {
                         profiles = response.users
                         isLoading = false
-                        android.util.Log.d("MainScreen", "✓ Loaded ${response.count} profiles")
+                        android.util.Log.d("MainScreen", "✓ Loaded ${response.count} profiles with filters")
                     } else {
                         errorMessage = response.msg
                         isLoading = false
                     }
-                }
-                .onFailure { error ->
+                }.onFailure { error ->
                     errorMessage = error.message ?: "Failed to load profiles"
                     isLoading = false
                     android.util.Log.e("MainScreen", "✗ Error loading profiles: ${error.message}")
                 }
+            } else {
+                android.util.Log.d("MainScreen", "No saved filter, loading all profiles")
+                
+                // Fall back to loading all profiles
+                ApiClient.getDiscoverProfiles(limit = 20)
+                    .onSuccess { response ->
+                        if (response.status) {
+                            profiles = response.users
+                            isLoading = false
+                            android.util.Log.d("MainScreen", "✓ Loaded ${response.count} profiles")
+                        } else {
+                            errorMessage = response.msg
+                            isLoading = false
+                        }
+                    }
+                    .onFailure { error ->
+                        errorMessage = error.message ?: "Failed to load profiles"
+                        isLoading = false
+                        android.util.Log.e("MainScreen", "✗ Error loading profiles: ${error.message}")
+                    }
+            }
         }
     }
 

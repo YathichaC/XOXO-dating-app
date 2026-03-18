@@ -38,12 +38,19 @@ class Matching : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        
+        // Initialize SharedPreferences
+        com.example.xoxo_compose.network.ApiClient.initSharedPreferences(this)
+        val currentUserID = this.getSharedPreferences("xoxo_app_prefs", android.content.Context.MODE_PRIVATE).getInt("user_id", 0)
+        
         setContent {
             XOXO_composeTheme {
                 MatchingScreen(
+                    currentUserID = currentUserID,
                     onMessageClick = {
-                        val intent = Intent(this, Chatroom::class.java)
+                        val intent = Intent(this@Matching, Chatroom::class.java)
                         intent.putExtra("user_name", "Samantha")
+                        intent.putExtra("currentUserID", currentUserID)  // ✅ Pass current user ID
                         startActivity(intent)
                         finish()
                     }
@@ -54,7 +61,7 @@ class Matching : ComponentActivity() {
 }
 
 @Composable
-fun MatchingScreen(onMessageClick: () -> Unit) {
+fun MatchingScreen(currentUserID: Int = 0, onMessageClick: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     

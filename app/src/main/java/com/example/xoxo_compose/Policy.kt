@@ -57,6 +57,15 @@ fun PolicyScreen() {
         }
     }
 
+    // Get registration data from intent
+    val fullname = (context as? ComponentActivity)?.intent?.getStringExtra("fullname") ?: ""
+    val email = (context as? ComponentActivity)?.intent?.getStringExtra("email") ?: ""
+    val password = (context as? ComponentActivity)?.intent?.getStringExtra("password") ?: ""
+    val day = (context as? ComponentActivity)?.intent?.getStringExtra("day") ?: ""
+    val month = (context as? ComponentActivity)?.intent?.getStringExtra("month") ?: ""
+    val year = (context as? ComponentActivity)?.intent?.getStringExtra("year") ?: ""
+    val country = (context as? ComponentActivity)?.intent?.getStringExtra("country") ?: ""
+
     Surface(modifier = Modifier.fillMaxSize(), color = Color.Black) {
         Column(
             modifier = Modifier
@@ -95,7 +104,17 @@ fun PolicyScreen() {
                 containerColor = if (isAtEnd) Color(0xFFD60C0C) else Color(0xFF1F1F1F),
                 onClick = {
                     if (isAtEnd) {
-                        context.startActivity(Intent(context, term_of_service::class.java))
+                        val intent = Intent(context, term_of_service::class.java).apply {
+                            putExtra("fullname", fullname)
+                            putExtra("email", email)
+                            putExtra("password", password)
+                            putExtra("day", day)
+                            putExtra("month", month)
+                            putExtra("year", year)
+                            putExtra("country", country)
+                        }
+                        context.startActivity(intent)
+                        (context as? ComponentActivity)?.finish()
                     }
                 }
             )

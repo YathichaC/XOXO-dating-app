@@ -165,40 +165,21 @@ fun register() {
                     label = "Register",
                     enabled = isFormValid && !isLoading,
                     onClick = {
-                        scope.launch {
-                            isLoading = true
-                            val monthNumber = (listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", 
-                                "Jul", "Aug", "Sep", "Oct", "Nov", "Dec").indexOf(month) + 1)
-                                .toString().padStart(2, '0')
-                            
-                            ApiClient.registerUser(
-                                fullname = username,
-                                email = email,
-                                password = password,
-                                day = day,
-                                month = monthNumber,
-                                year = year,
-                                country = country
-                            ).onSuccess { response ->
-                                isLoading = false
-                                android.util.Log.d("Register", "Registration successful: $response")
-                                android.widget.Toast.makeText(
-                                    context,
-                                    "Registration successful! Please login.",
-                                    android.widget.Toast.LENGTH_SHORT
-                                ).show()
-                                context.startActivity(Intent(context, Login::class.java))
-                                (context as? ComponentActivity)?.finish()
-                            }.onFailure { error ->
-                                isLoading = false
-                                android.util.Log.e("Register", "Registration failed: ${error.message}")
-                                android.widget.Toast.makeText(
-                                    context,
-                                    "Registration failed: ${error.message}",
-                                    android.widget.Toast.LENGTH_LONG
-                                ).show()
-                            }
+                        val monthNumber = (listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", 
+                            "Jul", "Aug", "Sep", "Oct", "Nov", "Dec").indexOf(month) + 1)
+                            .toString().padStart(2, '0')
+                        
+                        val intent = Intent(context, Policy::class.java).apply {
+                            putExtra("fullname", username)
+                            putExtra("email", email)
+                            putExtra("password", password)
+                            putExtra("day", day)
+                            putExtra("month", monthNumber)
+                            putExtra("year", year)
+                            putExtra("country", country)
                         }
+                        context.startActivity(intent)
+                        (context as? ComponentActivity)?.finish()
                     }
                 )
                 

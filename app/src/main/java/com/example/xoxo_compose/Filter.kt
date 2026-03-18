@@ -26,6 +26,7 @@ import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -41,10 +42,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.xoxo_compose.network.ApiClient
 import com.example.xoxo_compose.ui.theme.Dropdown
 import com.example.xoxo_compose.ui.theme.SubTitleText
 import com.example.xoxo_compose.ui.theme.Title
 import com.example.xoxo_compose.ui.theme.XOXO_composeTheme
+import com.example.xoxo_compose.ui.theme.button
 
 class Filter : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -67,6 +70,18 @@ fun FilterScreen() {
     var age by remember { mutableStateOf(24f) }
     var selectedCountry by remember { mutableStateOf("") }
     var selectedGender by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(false) }
+
+    // Load saved filter preferences on first compose
+    LaunchedEffect(Unit) {
+        val savedFilter = ApiClient.getFilterPreferences()
+        if (savedFilter != null) {
+            android.util.Log.d("Filter", "Loaded saved preferences: age=${savedFilter.ageRange}, country=${savedFilter.country}, gender=${savedFilter.gender}")
+            age = savedFilter.ageRange.toFloatOrNull() ?: 24f
+            selectedCountry = savedFilter.country
+            selectedGender = savedFilter.gender
+        }
+    }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -186,6 +201,61 @@ fun FilterScreen() {
                     modifier = Modifier.fillMaxWidth()
                 )
             }
+
+            Spacer(modifier = Modifier.height(30.dp))
+
+            // Apply Button
+            button(
+                label = "Apply",
+                enabled = !isLoading,
+                onClick = {
+                    isLoading = true
+                    val genderParam = when (selectedGender.lowercase()) {
+                        "male" -> "male"
+                        "female" -> "female"
+                        else -> ""
+                    }
+                    
+                    // Save filter preferences to SharedPreferences
+                    ApiClient.saveFilterPreferences(
+                        ageRange = age.toInt().toString(),
+                        country = selectedCountry,
+                        gender = genderParam
+                    )
+                    
+                    android.util.Log.d("Filter", "Filter saved and navigating to Main")
+                    
+                    // Navigate to Main screen
+                    context.startActivity(Intent(context, Main::class.java))
+                    (context as? ComponentActivity)?.finish()
+                },
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Clear Filter Button
+            button(
+                label = "Clear Filter",
+                enabled = !isLoading,
+                onClick = {
+                    // Clear filter preferences from SharedPreferences
+                    ApiClient.clearFilterPreferences()
+                    
+                    // Reset state variables
+                    age = 24f
+                    selectedCountry = ""
+                    selectedGender = ""
+                    
+                    android.util.Log.d("Filter", "Filter cleared")
+                    android.widget.Toast.makeText(
+                        context,
+                        "Filter cleared",
+                        android.widget.Toast.LENGTH_SHORT
+                    ).show()
+                },
+                modifier = Modifier.fillMaxWidth()
+            )
         }
     }
 }

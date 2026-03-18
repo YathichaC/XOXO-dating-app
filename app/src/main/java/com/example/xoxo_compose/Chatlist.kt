@@ -15,8 +15,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -30,6 +33,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.xoxo_compose.ui.theme.XOXO_composeTheme
+import com.example.xoxo_compose.network.ApiClient
+import com.example.xoxo_compose.network.ChatMatch
+import coil.compose.AsyncImage
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class Chatlist : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -44,24 +52,53 @@ class Chatlist : ComponentActivity() {
 }
 
 data class ChatItem(
-    val id: Int,
+    val matchesID: Int,
+    val matchedUserId: Int,
     val name: String,
     val lastMessage: String,
-    val imageRes: Int
+    val imageUrl: String
 )
 
 @Composable
 fun ChatListScreen() {
     val context = LocalContext.current
+    val chats = remember { mutableStateOf<List<ChatItem>>(emptyList()) }
+    val loading = remember { mutableStateOf(true) }
+    val error = remember { mutableStateOf<String?>(null) }
     
-    val chats = listOf(
-        ChatItem(1, "Samantha", "How are you today?", R.drawable.user),
-        ChatItem(2, "Jessica", "Let's meet up this weekend!", R.drawable.user),
-        ChatItem(3, "Emily", "Haha that's so funny 😂", R.drawable.user),
-        ChatItem(4, "Ashley", "I'm heading to work now.", R.drawable.user),
-        ChatItem(5, "Amanda", "Good morning!", R.drawable.user),
-        ChatItem(6, "Sarah", "See you later.", R.drawable.user)
-    )
+    // ✅ Get current user ID from SharedPreferences
+    val currentUserID = remember {
+        val sharedPrefs = context.getSharedPreferences("xoxo_app_prefs", android.content.Context.MODE_PRIVATE)
+        sharedPrefs.getInt("user_id", 0)
+    }
+
+    LaunchedEffect(Unit) {
+        withContext(Dispatchers.Main) {
+            val result = ApiClient.getChatList()
+            result.onSuccess { response ->
+                if (response.status) {
+                    val chatList = response.matches.map { match ->
+                        ChatItem(
+                            matchesID = match.matchesID,
+                            matchedUserId = match.matchedUserId,
+                            name = match.fullname,
+                            lastMessage = match.lastMessage ?: "No messages yet",
+                            imageUrl = match.image
+                        )
+                    }
+                    chats.value = chatList
+                    error.value = null
+                } else {
+                    error.value = response.msg
+                }
+                loading.value = false
+            }
+            result.onFailure {
+                error.value = it.message ?: "Failed to load chats"
+                loading.value = false
+            }
+        }
+    }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -98,17 +135,71 @@ fun ChatListScreen() {
                 )
             }
 
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(bottom = 20.dp)
-            ) {
-                items(chats) { chat ->
-                    ChatItemRow(chat)
-                    HorizontalDivider(
-                        modifier = Modifier.padding(vertical = 8.dp),
-                        thickness = 0.5.dp,
-                        color = Color.DarkGray
-                    )
+            when {
+                loading.value -> {
+                    // Loading state
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .wrapContentSize(Alignment.Center)
+                    ) {
+                        CircularProgressIndicator(color = Color(0xFFFF1493))
+                    }
+                }
+                error.value != null -> {
+                    // Error state
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .wrapContentSize(Alignment.Center)
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "Error",
+                                color = Color.White,
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = error.value ?: "Unknown error",
+                                color = Color.LightGray,
+                                fontSize = 14.sp,
+                                modifier = Modifier.padding(top = 8.dp)
+                            )
+                        }
+                    }
+                }
+                chats.value.isEmpty() -> {
+                    // Empty state
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .wrapContentSize(Alignment.Center)
+                    ) {
+                        Text(
+                            text = "No chats yet",
+                            color = Color.LightGray,
+                            fontSize = 16.sp
+                        )
+                    }
+                }
+                else -> {
+                    // Chat list
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(bottom = 20.dp)
+                    ) {
+                        items(chats.value) { chat ->
+                            ChatItemRow(chat, currentUserID)
+                            HorizontalDivider(
+                                modifier = Modifier.padding(vertical = 8.dp),
+                                thickness = 0.5.dp,
+                                color = Color.DarkGray
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -116,7 +207,7 @@ fun ChatListScreen() {
 }
 
 @Composable
-fun ChatItemRow(chat: ChatItem) {
+fun ChatItemRow(chat: ChatItem, currentUserID: Int) {
     val context = LocalContext.current
 
     val dotIconResId = remember(context) {
@@ -127,18 +218,40 @@ fun ChatItemRow(chat: ChatItem) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 8.dp)
-            .clickable { /* TODO: Open Chat */ },
+            .clickable { 
+                // Navigate to ChatRoom screen
+                val intent = Intent(context, Chatroom::class.java)
+                intent.putExtra("matchesID", chat.matchesID)
+                intent.putExtra("matchedUserId", chat.matchedUserId)
+                intent.putExtra("name", chat.name)
+                intent.putExtra("currentUserID", currentUserID)  // ✅ Pass current user ID
+                context.startActivity(intent)
+            },
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Image(
-            painter = painterResource(id = chat.imageRes),
-            contentDescription = null,
-            modifier = Modifier
-                .size(60.dp)
-                .clip(CircleShape)
-                .background(Color.DarkGray),
-            contentScale = ContentScale.Crop
-        )
+        // Load image from URL using Coil
+        if (chat.imageUrl.isNotEmpty()) {
+            AsyncImage(
+                model = ApiClient.API_BASE_URL + "/images/" + chat.imageUrl,
+                contentDescription = null,
+                modifier = Modifier
+                    .size(60.dp)
+                    .clip(CircleShape)
+                    .background(Color.DarkGray),
+                contentScale = ContentScale.Crop
+            )
+        } else {
+            // Fallback to default user image
+            Image(
+                painter = painterResource(id = R.drawable.user),
+                contentDescription = null,
+                modifier = Modifier
+                    .size(60.dp)
+                    .clip(CircleShape)
+                    .background(Color.DarkGray),
+                contentScale = ContentScale.Crop
+            )
+        }
 
         Spacer(modifier = Modifier.width(16.dp))
 
@@ -169,7 +282,8 @@ fun ChatItemRow(chat: ChatItem) {
                     .clickable {
                         val intent = Intent(context, Report::class.java)
                         intent.putExtra("reported_user_name", chat.name)
-                        intent.putExtra("from_chat", true) // ระบุว่ามาจากหน้า Chatlist
+                        intent.putExtra("reported_user_id", chat.matchedUserId)
+                        intent.putExtra("from_chat", true)
                         context.startActivity(intent)
                     }
             )

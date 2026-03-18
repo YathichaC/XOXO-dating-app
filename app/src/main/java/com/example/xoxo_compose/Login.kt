@@ -39,7 +39,6 @@ class Login : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        // Initialize SharedPreferences
         ApiClient.initSharedPreferences(this)
         setContent {
             XOXO_composeTheme {
@@ -85,39 +84,72 @@ fun LoginScreen() {
                 )
 
                 button(
-                    label = "Login",
+                    label = if (isLoading) "Loading..." else "Login",
                     enabled = isFormValid && !isLoading,
                     onClick = {
                         scope.launch {
                             isLoading = true
                             android.util.Log.d("Login", "=== LOGIN CLICK START ===")
                             android.util.Log.d("Login", "Email: $email")
+
                             ApiClient.loginUser(
                                 email = email,
                                 password = password
                             ).onSuccess { response ->
-                                isLoading = false
                                 android.util.Log.d("Login", "Login API response status: ${response.status}")
+
                                 if (response.status) {
                                     android.util.Log.d("Login", "✓ Login successful for: ${response.fullname}")
-                                    
-                                    // Dump all saved data
+
                                     val savedData = ApiClient.dumpAllPreferences()
                                     android.util.Log.d("Login", savedData)
-                                    
-                                    android.util.Log.d("Login", "=== LOGIN CLICK END ===")
-                                    
-                                    // Show toast with saved user info
-                                    android.widget.Toast.makeText(
-                                        context,
-                                        "Saved: ${response.fullname} (${response.email})",
-                                        android.widget.Toast.LENGTH_LONG
-                                    ).show()
-                                    
-                                    // Navigate to Main screen
-                                    context.startActivity(Intent(context, Main::class.java))
-                                    (context as? ComponentActivity)?.finish()
+
+                                    // ── Check KYC status ──────────────────────────────
+                                    android.util.Log.d("Login", "Checking KYC status...")
+                                    ApiClient.checkKYC()
+                                        .onSuccess { kycResponse ->
+                                            isLoading = false
+                                            android.util.Log.d("Login", "KYC check - verified: ${kycResponse.verified}, msg: ${kycResponse.msg}")
+
+                                            if (kycResponse.verified) {
+                                                // KYC already verified → go to Main
+                                                android.util.Log.d("Login", "KYC verified → navigating to Main")
+                                                android.widget.Toast.makeText(
+                                                    context,
+                                                    "ยินดีต้อนรับ ${response.fullname}",
+                                                    android.widget.Toast.LENGTH_SHORT
+                                                ).show()
+                                                context.startActivity(Intent(context, Main::class.java))
+                                                (context as? ComponentActivity)?.finish()
+                                            } else {
+                                                // KYC not verified → go to KYC screen
+                                                android.util.Log.d("Login", "KYC not verified → navigating to KYC")
+                                                android.widget.Toast.makeText(
+                                                    context,
+                                                    "กรุณายืนยันตัวตนก่อนใช้งาน",
+                                                    android.widget.Toast.LENGTH_LONG
+                                                ).show()
+                                                context.startActivity(Intent(context, KYC::class.java))
+                                                (context as? ComponentActivity)?.finish()
+                                            }
+                                        }
+                                        .onFailure { kycError ->
+                                            isLoading = false
+                                            // KYC check failed (network error etc.) → still go to Main
+                                            // to avoid blocking user on a KYC API issue
+                                            android.util.Log.e("Login", "KYC check failed: ${kycError.message} → proceeding to Main")
+                                            android.widget.Toast.makeText(
+                                                context,
+                                                "ยินดีต้อนรับ ${response.fullname}",
+                                                android.widget.Toast.LENGTH_SHORT
+                                            ).show()
+                                            context.startActivity(Intent(context, Main::class.java))
+                                            (context as? ComponentActivity)?.finish()
+                                        }
+                                    // ─────────────────────────────────────────────────
+
                                 } else {
+                                    isLoading = false
                                     android.util.Log.e("Login", "Login failed: ${response.msg}")
                                     android.widget.Toast.makeText(
                                         context,
@@ -127,13 +159,15 @@ fun LoginScreen() {
                                 }
                             }.onFailure { error ->
                                 isLoading = false
-                                android.util.Log.e("Login", "Login failed: ${error.message}")
+                                android.util.Log.e("Login", "Login error: ${error.message}")
                                 android.widget.Toast.makeText(
                                     context,
                                     "Login error: ${error.message}",
                                     android.widget.Toast.LENGTH_LONG
                                 ).show()
                             }
+
+                            android.util.Log.d("Login", "=== LOGIN CLICK END ===")
                         }
                     }
                 )
@@ -141,7 +175,7 @@ fun LoginScreen() {
                 ActionText(
                     text = "Forgot Password?",
                     modifier = Modifier.clickable {
-                        context.startActivity(Intent(context, forgot_password::class.java))
+                        context.startActivity(Intent(context, KYC::class.java))
                     }
                 )
 
