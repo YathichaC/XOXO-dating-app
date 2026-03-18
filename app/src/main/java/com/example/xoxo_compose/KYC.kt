@@ -125,7 +125,7 @@ private suspend fun callIAppEKYC(idCardFile: File, selfieFile: File): KYCVerifyS
         val ktorClient = HttpClient(CIO)
         try {
             if (!idCardFile.exists() || !selfieFile.exists()) {
-                return@withContext KYCVerifyState.Error("ไม่พบไฟล์ภาพ กรุณาเพิ่มภาพใหม่")
+                return@withContext KYCVerifyState.Error("Image files not found. Please add images again.")
             }
 
             // Re-compress before sending to ensure good quality & correct format
@@ -160,27 +160,27 @@ private suspend fun callIAppEKYC(idCardFile: File, selfieFile: File): KYCVerifyS
             if (!httpResponse.status.isSuccess()) {
                 return@withContext when (statusCode) {
                     421 -> KYCVerifyState.Error(
-                        message = "ไม่พบบัตรประชาชนหรือใบหน้าในภาพ",
+                        message = "ID card or face not found in the image.",
                         tips = listOf(
-                            "ตรวจสอบว่าภาพ file0 เป็นบัตรประชาชน ไม่ใช่เซลฟี่",
-                            "ถ่ายภาพบัตรให้ชัด ไม่มีแสงสะท้อน และมองเห็นข้อความ",
-                            "วางบัตรบนพื้นเรียบ ถ่ายตรงๆ ไม่เอียง",
-                            "ถ่ายใหม่ในที่แสงสว่างเพียงพอ"
+                            "Ensure Step 1 image is your ID card, not a selfie.",
+                            "Capture the card clearly with no glare and readable text.",
+                            "Place the card on a flat surface and shoot straight on.",
+                            "Retake the photo in adequate lighting."
                         )
                     )
                     422 -> KYCVerifyState.Error(
-                        message = "ไม่พบใบหน้าบนบัตรหรือในเซลฟี่",
+                        message = "Face not found on the ID card or in the selfie.",
                         tips = listOf(
-                            "ภาพยื่น: ต้องเห็นใบหน้าคุณและบัตรประชาชนชัดเจน",
-                            "ตรวจสอบว่าบัตรมีรูปถ่ายที่ชัดเจน",
-                            "ถ่ายใหม่หันหน้าตรงกล้อง ไม่สวมแว่นดำ"
+                            "Selfie: both your face and ID card must be clearly visible.",
+                            "Ensure the ID card photo is clear and undamaged.",
+                            "Retake facing the camera directly, without dark glasses."
                         )
                     )
-                    413 -> KYCVerifyState.Error("ไฟล์มีขนาดใหญ่เกินไป (เกิน 10 MB)")
-                    415 -> KYCVerifyState.Error("รูปแบบไฟล์ไม่รองรับ")
-                    420 -> KYCVerifyState.Error("ไม่พบพารามิเตอร์ที่ต้องการ")
-                    461 -> KYCVerifyState.Error("ไม่ได้แนบไฟล์")
-                    else -> KYCVerifyState.Error("เกิดข้อผิดพลาด ($statusCode)")
+                    413 -> KYCVerifyState.Error("File is too large (over 10 MB).")
+                    415 -> KYCVerifyState.Error("Unsupported file format.")
+                    420 -> KYCVerifyState.Error("Required parameters not found.")
+                    461 -> KYCVerifyState.Error("No file attached.")
+                    else -> KYCVerifyState.Error("Verification Error ($statusCode)")
                 }
             }
 
@@ -193,28 +193,28 @@ private suspend fun callIAppEKYC(idCardFile: File, selfieFile: File): KYCVerifyS
                 return@withContext when {
                     apiMsg.contains("id card not found", ignoreCase = true) ->
                         KYCVerifyState.Error(
-                            message = "ไม่พบบัตรประชาชนในภาพ (file0)",
+                            message = "ID card not found in image (file0).",
                             tips = listOf(
-                                "ภาพ Step 1 ต้องเป็นภาพบัตรประชาชนเท่านั้น ไม่ใช่เซลฟี่",
-                                "วางบัตรให้เห็นทั้งใบ ถ่ายตรงๆ ไม่เอียง",
-                                "หลีกเลี่ยงแสงสะท้อนบนบัตร",
-                                "ถ่ายใหม่ในที่สว่าง หรือลองเลือกภาพจากคลังที่ชัดขึ้น"
+                                "Step 1 image must be your ID card only, not a selfie.",
+                                "Ensure the full card is visible, shoot straight on without tilting.",
+                                "Avoid glare or reflections on the card.",
+                                "Retake in bright light, or pick a clearer image from gallery."
                             )
                         )
                     apiMsg.contains("face not found", ignoreCase = true) ||
                             apiMsg.contains("selfie", ignoreCase = true) ->
                         KYCVerifyState.Error(
-                            message = "ไม่พบใบหน้าในภาพ (file1)",
+                            message = "Face not found in image (file1).",
                             tips = listOf(
-                                "ภาพ Step 2 ต้องเห็นใบหน้าคุณพร้อมถือบัตรประชาชน",
-                                "หันหน้าตรงกล้อง อย่าสวมแว่นดำ",
-                                "ถ่ายในที่แสงสว่าง"
+                                "Step 2 image must show your face while holding your ID card.",
+                                "Face the camera directly and avoid dark glasses.",
+                                "Take the photo in a well-lit environment."
                             )
                         )
                     else ->
                         KYCVerifyState.Error(
-                            message = "API แจ้งข้อผิดพลาด: $apiMsg",
-                            tips = listOf("ลองถ่ายภาพใหม่ในที่แสงสว่างเพียงพอ")
+                            message = "API error: $apiMsg",
+                            tips = listOf("Try retaking the photo in adequate lighting.")
                         )
                 }
             }
@@ -233,7 +233,7 @@ private suspend fun callIAppEKYC(idCardFile: File, selfieFile: File): KYCVerifyS
             )
         } catch (e: Exception) {
             android.util.Log.e("KYC", "iApp eKYC error: ${e.message}", e)
-            KYCVerifyState.Error("เกิดข้อผิดพลาด: ${e.message}")
+            KYCVerifyState.Error("Verification Error: ${e.message}")
         } finally {
             ktorClient.close()
         }
@@ -301,16 +301,16 @@ fun KYCScreen() {
             ) {
                 Text(
                     text = when (pickerTarget) {
-                        PickerTarget.ID_CARD -> "🪪  เลือกภาพบัตรประชาชน"
-                        PickerTarget.SELFIE  -> "🤳  เลือกภาพยื่นกับบัตร"
-                        else -> "เลือกภาพ"
+                        PickerTarget.ID_CARD -> "🪪  Select ID Card Image"
+                        PickerTarget.SELFIE  -> "🤳  Select Selfie with ID Card"
+                        else -> "Select Image"
                     },
                     color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(bottom = 20.dp)
                 )
                 PickerOption(
-                    icon = "📷", label = "ถ่ายภาพด้วยกล้อง",
-                    subtitle = "เปิดกล้องเพื่อถ่ายภาพทันที",
+                    icon = "📷", label = "Take a Photo",
+                    subtitle = "Open camera to take a photo now",
                     onClick = {
                         val target = pickerTarget
                         pickerTarget = PickerTarget.NONE
@@ -324,8 +324,8 @@ fun KYCScreen() {
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 PickerOption(
-                    icon = "🖼️", label = "เลือกจากคลังภาพ",
-                    subtitle = "เลือกภาพที่มีอยู่ในเครื่อง",
+                    icon = "🖼️", label = "Choose from Gallery",
+                    subtitle = "Pick an existing image from your device",
                     onClick = {
                         val target = pickerTarget
                         pickerTarget = PickerTarget.NONE
@@ -338,7 +338,7 @@ fun KYCScreen() {
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 TextButton(onClick = { pickerTarget = PickerTarget.NONE }, modifier = Modifier.fillMaxWidth()) {
-                    Text("ยกเลิก", color = Color(0xFF888888), fontSize = 14.sp)
+                    Text("Cancel", color = Color(0xFF888888), fontSize = 14.sp)
                 }
             }
         }
@@ -363,11 +363,11 @@ fun KYCScreen() {
                         .clickable { if (!isLoading) context.startActivity(Intent(context, Main::class.java)) }
                 )
                 Spacer(modifier = Modifier.width(14.dp))
-                Text("ยืนยันตัวตน (KYC)", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                Text("Identity Verification (KYC)", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
             }
 
             Text(
-                text = "อัปโหลดภาพบัตรประชาชนและภาพยื่นกับบัตร เพื่อยืนยันตัวตน",
+                text = "Upload your ID card and a selfie holding your ID card to verify your identity.",
                 color = Color(0xFF9A9A9A), fontSize = 13.sp, textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp), lineHeight = 18.sp
             )
@@ -375,8 +375,8 @@ fun KYCScreen() {
             Spacer(modifier = Modifier.height(28.dp))
 
             CameraUploadSection(
-                stepNumber = "1", title = "บัตรประชาชน",
-                subtitle = "ถ่ายภาพหรือเลือกภาพบัตรประชาชนด้านหน้า",
+                stepNumber = "1", title = "National ID Card",
+                subtitle = "Take or select a photo of the front of your ID card",
                 icon = "🪪", capturedUri = idCardUri, enabled = !isLoading,
                 onTap = { pickerTarget = PickerTarget.ID_CARD }
             )
@@ -384,8 +384,8 @@ fun KYCScreen() {
             Spacer(modifier = Modifier.height(20.dp))
 
             CameraUploadSection(
-                stepNumber = "2", title = "ภาพยื่นถ่ายกับบัตรประชาชน",
-                subtitle = "ถ่ายภาพหรือเลือกภาพตนเองพร้อมถือบัตร",
+                stepNumber = "2", title = "Selfie Holding ID Card",
+                subtitle = "Take or select a photo of yourself holding your ID card",
                 icon = "🤳", capturedUri = selfieUri, enabled = !isLoading,
                 onTap = { pickerTarget = PickerTarget.SELFIE }
             )
@@ -446,13 +446,13 @@ fun KYCScreen() {
                 if (isLoading) {
                     CircularProgressIndicator(color = Color.White, modifier = Modifier.size(22.dp), strokeWidth = 2.5.dp)
                     Spacer(modifier = Modifier.width(10.dp))
-                    Text("กำลังตรวจสอบ...", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    Text("Verifying...", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 } else {
                     Text(
                         text = when {
-                            !bothCaptured                       -> "กรุณาเพิ่มภาพให้ครบก่อน"
-                            verifyState is KYCVerifyState.Error -> "ลองใหม่อีกครั้ง"
-                            else                                -> "ยืนยันตัวตน (Verify)"
+                            !bothCaptured                       -> "Please add both images first"
+                            verifyState is KYCVerifyState.Error -> "Try Again"
+                            else                                -> "Verify Identity"
                         },
                         color = if (bothCaptured) Color.White else Color(0xFF9A6A6A),
                         fontSize = 16.sp, fontWeight = FontWeight.Bold
@@ -462,7 +462,7 @@ fun KYCScreen() {
 
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "🔒  ข้อมูลของคุณถูกเข้ารหัสและปลอดภัย",
+                text = "🔒  Your data is encrypted and secure",
                 color = Color(0xFF666666), fontSize = 12.sp,
                 textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()
             )
@@ -545,7 +545,7 @@ fun CameraUploadSection(
                         modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth()
                             .background(Color(0xCC000000)).padding(vertical = 8.dp),
                         contentAlignment = Alignment.Center
-                    ) { Text("แตะเพื่อเปลี่ยนภาพ", color = Color(0xFFCCCCCC), fontSize = 12.sp) }
+                    ) { Text("Tap to change image", color = Color(0xFFCCCCCC), fontSize = 12.sp) }
                 }
             } else {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
@@ -554,9 +554,9 @@ fun CameraUploadSection(
                         Text("🖼️", fontSize = 28.sp)
                     }
                     Spacer(modifier = Modifier.height(10.dp))
-                    Text("แตะเพื่อเพิ่มภาพ", color = Color(0xFF888888), fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                    Text("Tap to add image", color = Color(0xFF888888), fontSize = 14.sp, fontWeight = FontWeight.Medium)
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text("ถ่ายภาพหรือเลือกจากคลัง", color = Color(0xFF555555), fontSize = 11.sp)
+                    Text("Take a photo or choose from gallery", color = Color(0xFF555555), fontSize = 11.sp)
                 }
             }
         }
@@ -582,18 +582,18 @@ fun VerifySuccessCard(state: KYCVerifyState.Success) {
             )
             Spacer(modifier = Modifier.height(12.dp))
             Text(
-                text = if (passed) "ยืนยันตัวตนสำเร็จ!" else "ยืนยันตัวตนไม่ผ่าน",
+                text = if (passed) "Identity Verified!" else "Verification Failed",
                 color = if (passed) Color(0xFF76EE76) else Color(0xFFFF6B6B),
                 fontSize = 20.sp, fontWeight = FontWeight.Bold
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = if (passed)
-                    "ตัวตนของคุณได้รับการยืนยันเรียบร้อยแล้วกำลังพาคุณไปยังหน้าหลัก..."
+                    "Your identity has been successfully verified.\nTaking you to the main screen..."
                 else
-                    "ไม่สามารถยืนยันตัวตนได้กรุณาถ่ายภาพใหม่ในที่แสงสว่างเพียงพอ",
-            color = Color(0xFF999999), fontSize = 13.sp,
-            textAlign = TextAlign.Center, lineHeight = 18.sp
+                    "Unable to verify your identity.\nPlease retake photos in better lighting.",
+                color = Color(0xFF999999), fontSize = 13.sp,
+                textAlign = TextAlign.Center, lineHeight = 18.sp
             )
         }
     }
@@ -615,7 +615,7 @@ fun VerifyErrorCard(message: String, tips: List<String> = emptyList()) {
             ) {
                 Text("⚠️", fontSize = 18.sp)
                 Column {
-                    Text("เกิดข้อผิดพลาด", color = Color(0xFFFF6B6B), fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    Text("Verification Error", color = Color(0xFFFF6B6B), fontSize = 14.sp, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(message, color = Color(0xFFCCCCCC), fontSize = 13.sp, lineHeight = 18.sp)
                 }
@@ -624,7 +624,7 @@ fun VerifyErrorCard(message: String, tips: List<String> = emptyList()) {
                 Spacer(modifier = Modifier.height(12.dp))
                 HorizontalDivider(color = Color(0xFF3A2020), thickness = 1.dp)
                 Spacer(modifier = Modifier.height(12.dp))
-                Text("💡  วิธีแก้ไข", color = Color(0xFFFFD700), fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Text("💡  How to Fix", color = Color(0xFFFFD700), fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(8.dp))
                 tips.forEach { tip ->
                     Row(
@@ -650,13 +650,13 @@ fun GuidelinesBox() {
         modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)
     ) {
         Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-            Text("📋  คำแนะนำการอัปโหลดภาพ", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            Text("📋  Photo Upload Guidelines", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(10.dp))
-            GuidelineRow("✅", "บัตรต้องมองเห็นข้อความชัดเจน ไม่มีแสงสะท้อน")
-            GuidelineRow("✅", "ถ่ายภาพในที่แสงสว่างเพียงพอ")
-            GuidelineRow("✅", "ภาพยื่น: ถือบัตรให้เห็นทั้งหน้าคนและบัตร")
-            GuidelineRow("❌", "ห้ามใช้ภาพที่ถ่ายจากหน้าจออื่น")
-            GuidelineRow("❌", "ห้ามใช้บัตรหมดอายุ")
+            GuidelineRow("✅", "Card text must be clearly visible with no glare.")
+            GuidelineRow("✅", "Take photos in adequate lighting.")
+            GuidelineRow("✅", "Selfie: hold the card so both your face and card are visible.")
+            GuidelineRow("❌", "Do not use photos taken of another screen.")
+            GuidelineRow("❌", "Do not use an expired ID card.")
         }
     }
 }

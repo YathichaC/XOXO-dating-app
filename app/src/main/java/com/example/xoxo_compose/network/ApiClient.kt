@@ -594,11 +594,21 @@ object ApiClient {
         response
     }
 
-    suspend fun submitReport(targetUserId: Int, reason: String, detail: String): Result<ReportResponse> = runCatching {
+    suspend fun submitReport(
+        targetUserId: Int,
+        reason: String,
+        detail: String,
+        image1: String? = null,
+        image2: String? = null,
+        image3: String? = null
+    ): Result<ReportResponse> = runCatching {
         val request = ReportRequest(
             targetUserId = targetUserId,
             reason = reason,
-            detail = detail
+            detail = detail,
+            image1 = image1,
+            image2 = image2,
+            image3 = image3
         )
 
         val response = client.post("/auth/report") {
@@ -899,7 +909,10 @@ data class SwipeResponse(
 data class ReportRequest(
     val targetUserId: Int,
     val reason: String,
-    val detail: String
+    val detail: String,
+    val image1: String? = null,
+    val image2: String? = null,
+    val image3: String? = null
 )
 
 @Serializable
